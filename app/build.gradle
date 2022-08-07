@@ -97,14 +97,21 @@ def allCommitted = { ->
     return stringBuilder.toString().isEmpty()
 }
 
+String getKey(String key) {
+    def propFile = rootProject.file("./local.properties")
+    def properties = new Properties()
+    properties.load(new FileInputStream(propFile))
+    return properties["$key"]
+}
+
 android {
-    if (System.getenv('STORE_PASS')){
+    if (file('keystore.jks')){
         signingConfigs {
             fullRelease {
                 storeFile file('keystore.jks')
-                storePassword "${System.getenv('STORE_PASS')}"
-                keyAlias "${System.getenv('KEY_ALIAS')}"
-                keyPassword "${System.getenv('KEY_PASS')}"
+                storePassword "${getKey('STORE_PASS')}"
+                keyAlias "${getKey('KEY_ALIAS')}"
+                keyPassword "${getKey('KEY_PASS')}"
             }
         }
     }

@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "master" ]
 
+env:
+  APK_PATH: app/build/outputs/apk/full/release/app-full-release.apk
+
 jobs:
   build:
     environment: prod
@@ -20,12 +23,21 @@ jobs:
         distribution: 'adopt-openj9'
         cache: gradle
 
+
     - name: Injecting keystore
       run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
+    - name: Build vars
+      run: echo STORE_PASS=\"$STORE_PASS\" > ./local.properties && \
+           echo KEY_ALIAS=\"$KEY_ALIAS\" >> ./local.properties && \
+           echo KEY_PASS=\"$KEY_PASS\" >> ./local.properties
+
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Path
       run: pwd && ls -la
+    - name: print conf
+      run: cat ./local.properties
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
@@ -33,7 +45,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
-        path: app/build/outputs/apk/full/release/app-full-release.apk
+        path: $APK_PATH
     - name: Send mail
       uses: dawidd6/action-send-mail@v3
       with:
@@ -48,9 +60,9 @@ jobs:
         # Required mail subject:
         subject: Github Actions job result
         # Required recipients' addresses:
-        to: pyemus@gmail.com
+        to: ${{secrets.MAIL_USERNAME_2}}
         # Required sender full name (address can be skipped):
-        from: peterbysoe@gmail.com # <user@example.com>
+        from: ${{secrets.MAIL_USERNAME}} # <user@example.com>
         # Optional whether this connection use TLS (default is true if server_port is 465)
         secure: true
         # Optional plain body:
@@ -70,6 +82,6 @@ jobs:
         # Optional converting Markdown to HTML (set content_type to text/html too):
         convert_markdown: true
         # Optional attachments:
-        attachments: app/build/outputs/apk/full/release/app-full-release.apk
+        attachments: $APK_PATH
         # Optional priority: 'high', 'normal' (default) or 'low'
         priority: low
