@@ -46,7 +46,7 @@ jobs:
         # Required recipients' addresses:
         to: pyemus@gmail.com
         # Required sender full name (address can be skipped):
-        from: AAPS - pyemus # <user@example.com>
+        from: pyemus@gmail.com # <user@example.com>
         # Optional whether this connection use TLS (default is true if server_port is 465)
         secure: true
         # Optional plain body:
