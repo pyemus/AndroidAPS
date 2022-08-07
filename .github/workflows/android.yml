@@ -29,11 +29,11 @@ jobs:
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
-      run: ls -ls app/ && ls -la app/build/outputs
+      run: ls -ls app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
-        path: app/full/release/app-full-release.apk
+        path: app/build/outputs/apk/full/release/app-full-release.apk
     - name: Send mail
       uses: dawidd6/action-send-mail@v3
       with:
@@ -70,6 +70,6 @@ jobs:
         # Optional converting Markdown to HTML (set content_type to text/html too):
         convert_markdown: true
         # Optional attachments:
-        attachments: app/full/release/app-full-release.apk
+        attachments: app/build/outputs/apk/full/release/app-full-release.apk
         # Optional priority: 'high', 'normal' (default) or 'low'
         priority: low
