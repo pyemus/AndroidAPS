@@ -20,6 +20,8 @@ jobs:
         distribution: 'adopt-openj9'
         cache: gradle
 
+    - name: Path
+      run: pwd && ls -la
     - name: Injecting keystore
       run: echo "$KEYSTORE" | base64 -d > keystore.jks
     - name: Grant execute permission for gradlew
@@ -27,6 +29,8 @@ jobs:
     - name: Building release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - uses: actions/upload-artifact@v3
+    - name: Path print
+      run: ls -la app/build/outputs
       with:
         name: AAPS apk
         path: app/full/release/app-full-release.apk
@@ -38,15 +42,15 @@ jobs:
         # Required mail server port:
         server_port: 465
         # Optional (recommended): mail server username:
-        #username: ${{secrets.MAIL_USERNAME}}
+        username: ${{secrets.MAIL_USERNAME}}
         # Optional (recommended) mail server password:
-        #password: ${{secrets.MAIL_PASSWORD}}
+        password: ${{secrets.MAIL_PASSWORD}}
         # Required mail subject:
         subject: Github Actions job result
         # Required recipients' addresses:
         to: pyemus@gmail.com
         # Required sender full name (address can be skipped):
-        from: pyemus@gmail.com # <user@example.com>
+        from: peterbysoe@gmail.com # <user@example.com>
         # Optional whether this connection use TLS (default is true if server_port is 465)
         secure: true
         # Optional plain body:
