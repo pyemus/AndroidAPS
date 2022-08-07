@@ -5,6 +5,7 @@ apply plugin: 'kotlin-allopen'
 apply plugin: 'com.google.gms.google-services'
 apply plugin: 'com.hiya.jacoco-android'
 apply plugin: 'com.google.firebase.crashlytics'
+apply plugin: 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
 
 apply from: "${project.rootDir}/core/android_dependencies.gradle"
 apply from: "${project.rootDir}/core/jacoco_global.gradle"
@@ -97,21 +98,14 @@ def allCommitted = { ->
     return stringBuilder.toString().isEmpty()
 }
 
-String getKey(String key) {
-    def propFile = rootProject.file("./local.properties")
-    def properties = new Properties()
-    properties.load(new FileInputStream(propFile))
-    return properties["$key"]
-}
-
 android {
-    if (file('keystore.jks')){
+    if (System.getenv('STORE_PASS')){
         signingConfigs {
             fullRelease {
                 storeFile file('keystore.jks')
-                storePassword "${getKey('STORE_PASS')}"
-                keyAlias "${getKey('KEY_ALIAS')}"
-                keyPassword "${getKey('KEY_PASS')}"
+                storePassword "${System.getenv('STORE_PASS')}"
+                keyAlias "${System.getenv('KEY_ALIAS')}"
+                keyPassword "${System.getenv('KEY_PASS')}"
             }
         }
     }
@@ -261,6 +255,6 @@ if (isMaster() && !gitAvailable()) {
     throw new GradleException('GIT system is not available. On Windows try to run Android Studio as an Administrator. Check if GIT is installed and Studio have permissions to use it')
 }
 if (isMaster() && !allCommitted()) {
-    throw new GradleException('There are uncommitted changes. Clone sources again as described in wiki and do not allow gradle update')
+//    throw new GradleException('There are uncommitted changes. Clone sources again as described in wiki and do not allow gradle update')
 }
 
