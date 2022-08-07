@@ -28,9 +28,9 @@ jobs:
       run: chmod +x gradlew
     - name: Building release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
-    - uses: actions/upload-artifact@v3
     - name: Path print
       run: ls -la app/build/outputs
+    - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
         path: app/full/release/app-full-release.apk
