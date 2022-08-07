@@ -20,6 +20,8 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Injecting keystore
+      run: echo "$KEYSTORE" | base64 -d > keystore.jks
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Building release apk
