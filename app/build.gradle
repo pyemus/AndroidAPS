@@ -98,6 +98,16 @@ def allCommitted = { ->
 }
 
 android {
+    if (System.getenv('STORE_PASS')){
+        signingConfigs {
+            fullRelease {
+                storeFile file('')
+                storePassword "${System.getenv('STORE_PASS')}"
+                keyAlias "${System.getenv('KEY_ALIAS')}"
+                keyPassword "${System.getenv('KEY_PASS')}"
+            }
+        }
+    }
 
     namespace 'info.nightscout.androidaps'
     ndkVersion "21.1.6352462"
