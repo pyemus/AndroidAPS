@@ -20,16 +20,16 @@ jobs:
         distribution: 'adopt-openj9'
         cache: gradle
 
-    - name: Path
-      run: pwd && ls -la
     - name: Injecting keystore
-      run: echo "$KEYSTORE" | base64 -d > keystore.jks
+      run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Building release apk
+    - name: Path
+      run: pwd && ls -la
+    - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
-      run: ls -la app/build/outputs
+      run: ls -ls app/ && ls -la app/build/outputs
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
