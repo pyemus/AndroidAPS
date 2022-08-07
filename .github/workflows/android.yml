@@ -30,7 +30,13 @@ jobs:
     - name: Path
       run: pwd && ls -la
     - name: Make prop file
-      run: touch local.properties && chmod +x local.properties
+      run: touch ./local.properties && chmod +x ./local.properties
+    - name: Getting vars
+      env:
+        STORE_PASS: ${{ secrets.STORE_PASS }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASS: ${{ secrets.KEY_PASS }}
+      run: echo STORE_PASS="$STORE_PASS" > ./local.properties && echo KEY_ALIAS="$KEY_ALIAS" >> ./local.properties && echo KEY_PASS="$KEY_PASS" >> ./local.properties
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
