@@ -29,6 +29,8 @@ jobs:
       run: chmod +x gradlew
     - name: Path
       run: pwd && ls -la
+    - name: Make prop file
+      run: touch local.properties && chmod +x local.properties
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
