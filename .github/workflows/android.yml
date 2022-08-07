@@ -34,8 +34,7 @@ jobs:
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i
     - name: Path print
-      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat
-      local.properties && ls -la app/
+      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat local.properties && ls -la app/
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
