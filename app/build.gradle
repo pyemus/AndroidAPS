@@ -98,15 +98,15 @@ def allCommitted = { ->
 }
 
 android {
-    if (System.getenv('STORE_PASS')){
+    if (file('keystore.jks')){
         println ("Has store pass")
         signingConfigs {
             fullRelease {
                 println ("Has fullRelease")
                 storeFile file('keystore.jks')
-                storePassword "${System.getenv('STORE_PASS')}"
-                keyAlias "${System.getenv('KEY_ALIAS')}"
-                keyPassword "${System.getenv('KEY_PASS')}"
+                storePassword "${storePass}"
+                keyAlias "${keyAlias}"
+                keyPassword "${keyPass}"
             }
         }
     }
