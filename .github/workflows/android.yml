@@ -38,7 +38,7 @@ jobs:
         KEY_PASS: ${{ secrets.KEY_PASS }}
       run: echo STORE_PASS="$STORE_PASS" > ./local.properties && echo KEY_ALIAS="$KEY_ALIAS" >> ./local.properties && echo KEY_PASS="$KEY_PASS" >> ./local.properties
     - name: Assembling release apk
-      run: ./gradlew clean :app:assembleFullRelease -s -i -PstorePass=$STORE_PASS -PkeyAlias=$KEY_ALIAS -PkeyPass=$KEY_PASS -Pci=true
+      run: ./gradlew clean :app:assembleFullRelease -s -i -PstorePass="${{ secrets.STORE_PASS }}" -PkeyAlias="${{ secrets.KEY_ALIAS }}" -PkeyPass="${{ secrets.KEY_PASS }}" -Pci=true
     - name: Path print
       run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat local.properties && ls -la app/
     - uses: actions/upload-artifact@v3
