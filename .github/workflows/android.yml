@@ -36,11 +36,11 @@ jobs:
         cache: gradle
 
     - name: Injecting keystore
-      run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
+      run: echo "$KEYSTORE" | base64 -d > /home/runner/work/AndroidAPS/AndroidAPS/app/keystore.jks
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Path
-      run: pwd && ls -la
+    - name: Path print
+      run: pwd && ls -la && ls app/
     - name: Make prop file
       run: touch ./local.properties && chmod +x ./local.properties
     - name: Getting vars
@@ -49,6 +49,8 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASS: ${{ secrets.KEY_PASS }}
       run: echo STORE_PASS="$STORE_PASS" > ./local.properties && echo KEY_ALIAS="$KEY_ALIAS" >> ./local.properties && echo KEY_PASS="$KEY_PASS" >> ./local.properties
+    - name: print vars
+      run: cat ./local.properties
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i -PstorePass="${{ secrets.STORE_PASS }}" -PkeyAlias="${{ secrets.KEY_ALIAS }}" -PkeyPass="${{ secrets.KEY_PASS }}" -Pci=true
     - name: Path print
