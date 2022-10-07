@@ -104,9 +104,9 @@ android {
             fullRelease {
                 println ("Has fullRelease")
                 storeFile file('keystore.jks')
-                storePassword "${storePass}"
-                keyAlias "${keyAlias}"
-                keyPassword "${keyPass}"
+                storePassword "${System.env.STORE_PASS}"
+                keyAlias "${System.env.KEY_ALIAS}"
+                keyPassword "${System.env.KEY_PASS}"
                 v1SigningEnabled true
                 v2SigningEnabled true
             }
