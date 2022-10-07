@@ -42,7 +42,7 @@ jobs:
     - name: Path print
       run: pwd && ls -la && ls app/
     - name: Make prop file
-      run: touch ./local.properties && chmod +x ./local.properties
+      run: touch app/local.properties && chmod +x app/local.properties
     - name: Getting vars
       env:
         STORE_PASS: ${{ secrets.STORE_PASS }}
@@ -50,11 +50,11 @@ jobs:
         KEY_PASS: ${{ secrets.KEY_PASS }}
       run: echo STORE_PASS="$STORE_PASS" > app/local.properties && echo KEY_ALIAS="$KEY_ALIAS" >> app/local.properties && echo KEY_PASS="$KEY_PASS" >> app/local.properties
     - name: print vars
-      run: cat ./local.properties
+      run: cat app/local.properties
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i -PstorePass="${{ secrets.STORE_PASS }}" -PkeyAlias="${{ secrets.KEY_ALIAS }}" -PkeyPass="${{ secrets.KEY_PASS }}" -Pci=true
     - name: Path print
-      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat local.properties && ls -la app/
+      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat app/local.properties && ls -la app/
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk

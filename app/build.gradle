@@ -100,10 +100,10 @@ def allCommitted = { ->
 android {
     if (file('local.properties')){
         println ("Has store pass")
-        def props = new Properties()
-        file("local.properties").withInputStream { props.load(it) }
         signingConfigs {
             fullRelease {
+                def props = new Properties()
+                file("local.properties").withInputStream { props.load(it) }
                 println ("Has fullRelease")
                 storeFile file('keystore.jks')
                 storePassword "${props.getProperty('STORE_PASS')}"
