@@ -172,6 +172,12 @@ android {
         }
     }
 
+    buildTypes {
+        release {
+            productFlavors.full.signingConfig signingConfigs.fullRelease
+        }
+    }
+
     useLibrary "org.apache.http.legacy"
 }
 
