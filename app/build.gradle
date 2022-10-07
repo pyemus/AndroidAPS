@@ -102,13 +102,11 @@ android {
         println ("Has store pass")
         signingConfigs {
             fullRelease {
-                def props = new Properties()
-                file("local.properties").withInputStream { props.load(it) }
                 println ("Has fullRelease")
                 storeFile file('keystore.jks')
-                storePassword "${props.getProperty('STORE_PASS')}"
-                keyAlias "${props.getProperty('KEY_ALIAS')}"
-                keyPassword "${props.getProperty('KEY_PASS')}"
+                storePassword "${storePass}"
+                keyAlias "${keyAlias}"
+                keyPassword "${keyPass}"
             }
         }
     }
