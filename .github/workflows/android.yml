@@ -36,7 +36,7 @@ jobs:
         cache: gradle
 
     - name: Injecting keystore
-      run: echo "$KEYSTORE" | base64 -d > /home/runner/work/AndroidAPS/AndroidAPS/app/keystore.jks
+      run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Path print
