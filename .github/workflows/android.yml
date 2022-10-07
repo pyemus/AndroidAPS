@@ -52,7 +52,7 @@ jobs:
     - name: print vars
       run: cat app/local.properties
     - name: Assembling release apk
-      run: ./gradlew clean :app:assembleFullRelease -s -i
+      run: ./gradlew clean :app:assembleFullRelease -s -i -PstorePass="${env.STORE_PASS}" -PkeyAlias="${env.KEY_ALIAS}" -PkeyPass="${env.KEY_PASS}" -Pci=true
     - name: Path print
       run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat app/local.properties && ls -la app/
     - uses: actions/upload-artifact@v3
