@@ -104,9 +104,9 @@ android {
             fullRelease {
                 println ("Has fullRelease")
                 storeFile file('keystore.jks')
-                storePassword "${System.env.STORE_PASS}"
-                keyAlias "${System.env.KEY_ALIAS}"
-                keyPassword "${System.env.KEY_PASS}"
+                storePassword "${env.STORE_PASS}"
+                keyAlias "${env.KEY_ALIAS}"
+                keyPassword "${env.KEY_PASS}"
             }
         }
     }
