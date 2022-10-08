@@ -17,7 +17,6 @@ on:
           - warning
           - debug
 
-
 env:
   APK_PATH: app/build/outputs/apk/full/release/app-full-release.apk
 
@@ -75,7 +74,8 @@ jobs:
         # Optional whether this connection use TLS (default is true if server_port is 465)
         secure: true
         # Optional plain body:
-        body: Build job of ${{github.repository}} completed successfully!
+        body: Build job of ${{github.repository}} completed successfully! Download the apk from
+        this github action run https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
         # Optional HTML body read from file:
 #        html_body: file://README.html
         # Optional carbon copy recipients:
