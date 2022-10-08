@@ -39,12 +39,6 @@ jobs:
         cache: gradle
     - name: Injecting keystore
       run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
-#    - name: Setting keys
-#      env:
-#        STORE_PASS: ${{ secrets.STORE_PASS }}
-#        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-#        KEY_PASS: ${{ secrets.KEY_PASS }}
-#      run: echo "STORE_PASS=$STORE_PASS" >> $GITHUB_ENV && echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV && echo "KEY_PASS=$KEY_PASS" >> $GITHUB_ENV
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Path print
@@ -56,11 +50,11 @@ jobs:
     - name: Assembling release apk
       run: ./gradlew clean :app:assembleFullRelease -s -i -Pci=true
     - name: Path print
-      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && cat app/local.properties && ls -la app/
+      run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && ls -la app/
     - uses: actions/upload-artifact@v3
       with:
         name: AAPS apk
-        path: $APK_PATH
+        path: app/build/outputs/apk/full/release/app-full-release.apk
     - name: Send mail
       uses: dawidd6/action-send-mail@v3
       with:
@@ -97,6 +91,6 @@ jobs:
         # Optional converting Markdown to HTML (set content_type to text/html too):
         convert_markdown: true
         # Optional attachments:
-        attachments: $APK_PATH
+        attachments: app/build/outputs/apk/full/release/app-full-release.apk
         # Optional priority: 'high', 'normal' (default) or 'low'
         priority: low
