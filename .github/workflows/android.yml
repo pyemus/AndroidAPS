@@ -19,7 +19,7 @@ on:
 
 
 env:
-  APK_PATH: app/full/release/app-full-release.apk  #app/build/outputs/apk/full/release/app-full-release.apk
+  APK_PATH: app/build/outputs/apk/full/release/app-full-release.apk
 
 jobs:
   build:
