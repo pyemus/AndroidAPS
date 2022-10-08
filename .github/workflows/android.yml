@@ -90,6 +90,6 @@ jobs:
         # Optional converting Markdown to HTML (set content_type to text/html too):
         convert_markdown: true
         # Optional attachments:
-        attachments: /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full-release.apk
+        #attachments: /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full-release.apk
         # Optional priority: 'high', 'normal' (default) or 'low'
-        priority: low
+        priority: normal
