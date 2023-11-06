@@ -148,7 +148,6 @@ android {
             manifestPlaceholders["appIconRound"] = "@mipmap/ic_blueowl"
         }
     }
-    //val helloPluginVersion: String by settings
     signingConfigs {
        create("fullRelease") {
            try {
@@ -164,9 +163,9 @@ android {
                keyPassword = "$propKeyPassword"
            } catch (e: Exception) {
                storeFile = file("keystore.jks")
-               storePassword = "${System.env.STORE_PASS}"
-               keyAlias = "${System.env.KEY_ALIAS}"
-               keyPassword = "${System.env.KEY_PASS}"
+               storePassword = System.getProperty(STORE_PASS)
+               keyAlias = System.getProperty(KEY_ALIAS)
+               keyPassword = System.getProperty(KEY_PASS)
            }
        }
     }
