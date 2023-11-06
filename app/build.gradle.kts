@@ -149,17 +149,12 @@ android {
         }
     }
     //val helloPluginVersion: String by settings
-    val properties = File("C:\\Users\\peter\\.gradle", "gradle.properties").inputStream().use {
-       Properties().apply { load(it) }
-    }
     signingConfigs {
        create("fullRelease") {
-           if (properties == null) {
-               storeFile = file("keystore.jks")
-               storePassword = System.getenv("STORE_PASS")
-               keyAlias = System.getenv("KEY_ALIAS")
-               keyPassword = System.getenv("KEY_PASS")
-           } else {
+           try {
+               val properties = File("C:\\Users\\peter\\.gradle", "gradle.properties").inputStream().use {
+                   Properties().apply { load(it) }
+                }
                 val propKeyAlias = properties.getValue("keyAlias") as String
                 val propStorePassword = properties.getValue("storePassword") as String
                 val propKeyPassword = properties.getValue("keyPassword") as String
@@ -167,6 +162,11 @@ android {
                storePassword = "$propStorePassword"
                keyAlias = "$propKeyAlias"
                keyPassword = "$propKeyPassword"
+           } catch (e: Exception) {
+               storeFile = file("keystore.jks")
+               storePassword = System.getenv("STORE_PASS")
+               keyAlias = System.getenv("KEY_ALIAS")
+               keyPassword = System.getenv("KEY_PASS")
            }
        }
     }
