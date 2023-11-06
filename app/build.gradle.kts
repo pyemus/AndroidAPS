@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -146,6 +147,28 @@ android {
             manifestPlaceholders["appIcon"] = "@mipmap/ic_blueowl"
             manifestPlaceholders["appIconRound"] = "@mipmap/ic_blueowl"
         }
+    }
+    //val helloPluginVersion: String by settings
+    val properties = File("C:\\Users\\peter\\.gradle", "gradle.properties").inputStream().use {
+       Properties().apply { load(it) }
+    }
+    signingConfigs {
+       create("fullRelease") {
+           if (properties == null) {
+               storeFile = file("keystore.jks")
+               storePassword = System.getenv("STORE_PASS")
+               keyAlias = System.getenv("KEY_ALIAS")
+               keyPassword = System.getenv("KEY_PASS")
+           } else {
+                val propKeyAlias = properties.getValue("keyAlias") as String
+                val propStorePassword = properties.getValue("storePassword") as String
+                val propKeyPassword = properties.getValue("keyPassword") as String
+               storeFile = file("C:\\Users\\peter\\AndroidStudioProjects\\AndroidAPS\\keys\\peter_keys.jks")
+               storePassword = "$propStorePassword"
+               keyAlias = "$propKeyAlias"
+               keyPassword = "$propKeyPassword"
+           }
+       }
     }
 
     useLibrary("org.apache.http.legacy")
