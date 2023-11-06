@@ -164,9 +164,9 @@ android {
                keyPassword = "$propKeyPassword"
            } catch (e: Exception) {
                storeFile = file("keystore.jks")
-               storePassword = System.getenv("STORE_PASS")
-               keyAlias = System.getenv("KEY_ALIAS")
-               keyPassword = System.getenv("KEY_PASS")
+               storePassword = "${System.env.STORE_PASS}"
+               keyAlias = "${System.env.KEY_ALIAS}"
+               keyPassword = "${System.env.KEY_PASS}"
            }
        }
     }
