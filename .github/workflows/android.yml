@@ -1,0 +1,95 @@
+name: Android CI for AAPS
+
+on:
+  push:
+    branches: [ "master-peter" ]
+  pull_request:
+    branches: [ "master-peter" ]
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+
+env:
+  APK_PATH: app/build/outputs/apk/full/release/app-full-release.apk
+
+jobs:
+  build:
+    environment: prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: oNaiPs/secrets-to-env-action@v1
+        with:
+          secrets: ${{ toJSON(secrets) }}
+      - name: set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt-openj9'
+          cache: gradle
+      - name: Injecting keystore
+        run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Path print
+        run: pwd && ls -la && ls app/
+      - name: Make prop file
+        run: touch app/local.properties && chmod +x app/local.properties
+      - name: print vars
+        run: cat app/local.properties
+      - name: Assembling release apk
+        run: ./gradlew clean :app:assembleFullRelease -s -i -Pci=true
+      - name: Path print
+        run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && ls -la app/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: AAPS apk
+          path: /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full-release.apk
+      - name: Send mail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Required mail server address:
+          server_address: smtp.gmail.com
+          # Required mail server port:
+          server_port: 465
+          # Optional (recommended): mail server username:
+          username: ${{secrets.MAIL_USERNAME}}
+          # Optional (recommended) mail server password:
+          password: ${{secrets.MAIL_PASSWORD}}
+          # Required mail subject:
+          subject: Github Actions job result
+          # Required recipients' addresses:
+          to: ${{secrets.MAIL_USERNAME_2}}
+          # Required sender full name (address can be skipped):
+          from: ${{secrets.MAIL_USERNAME}} # <user@example.com>
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional plain body:
+          body: Build job of ${{github.repository}} completed successfully! Download the apk from this github action run https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          # Optional HTML body read from file:
+          #        html_body: file://README.html
+          # Optional carbon copy recipients:
+          #cc: kyloren@example.com,leia@example.com
+          # Optional blind carbon copy recipients:
+          #bcc: r2d2@example.com,hansolo@example.com
+          # Optional recipient of the email response:
+          #reply_to: luke@example.com
+          # Optional Message ID this message is replying to:
+          #in_reply_to: <random-luke@example.com>
+          # Optional unsigned/invalid certificates allowance:
+          ignore_cert: true
+          # Optional converting Markdown to HTML (set content_type to text/html too):
+          convert_markdown: true
+          # Optional attachments:
+          #attachments: /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full-release.apk
+          # Optional priority: 'high', 'normal' (default) or 'low'
+          priority: normal
