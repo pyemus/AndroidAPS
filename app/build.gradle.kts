@@ -162,13 +162,13 @@ android {
                keyAlias = "$propKeyAlias"
                keyPassword = "$propKeyPassword"
            } catch (e: Exception) {
-               if (System.getProperty("STORE_PASS")==null) {
+               if (System.getenv("STORE_PASS")==null) {
                    throw GradleException("Can't find credentials")
                }
                storeFile = file("keystore.jks")
-               storePassword = System.getProperty("STORE_PASS")
-               keyAlias = System.getProperty("KEY_ALIAS")
-               keyPassword = System.getProperty("KEY_PASS")
+               storePassword = System.getenv("STORE_PASS")
+               keyAlias = System.getenv("KEY_ALIAS")
+               keyPassword = System.getenv("KEY_PASS")
            }
        }
     }
