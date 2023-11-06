@@ -162,6 +162,9 @@ android {
                keyAlias = "$propKeyAlias"
                keyPassword = "$propKeyPassword"
            } catch (e: Exception) {
+               if (System.getProperty("STORE_PASS")==null) {
+                   throw GradleException("Can't find credentials")
+               }
                storeFile = file("keystore.jks")
                storePassword = System.getProperty("STORE_PASS")
                keyAlias = System.getProperty("KEY_ALIAS")
@@ -169,6 +172,12 @@ android {
            }
        }
     }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("fullRelease")
+        }
+    }
+
 
     useLibrary("org.apache.http.legacy")
 
