@@ -22,3 +22,7 @@ wear/.settings/org.eclipse.buildship.core.prefs
 app/nsclient/*
 app/nsclient2/*
 app/pumpcontrol/*
+key/
+/keys/
+/keys/keys.txt
+/keys/peter_keys.jks
