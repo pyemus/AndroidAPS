@@ -52,14 +52,15 @@ jobs:
         run: ./gradlew :wear:assembleFullRelease -s -i -Pci=true
       - name: Path print
         run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && ls
-          -la app/ && ls -la app/full/release/ && ls -la wear/full/release/
+          -la app/ && ls -la wear/build/outputs/apk/full/release
       - uses: actions/upload-artifact@v3
         with:
           name: AAPS apk
           path:
-            /home/runner/work/AndroidAPS/AndroidAPS/app/full/release/app-full-release.apk
-            /home/runner/work/AndroidAPS/AndroidAPS/wear/full/release/wear-full-release.apk
-            /home/runner/work/AndroidAPS/AndroidAPS/wear/full/release/output-metadata.json
+            /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full
+            -release.apk
+            /home/runner/work/AndroidAPS/AndroidAPS/wear/build/outputs/apk/full/release/wear-full-release.apk
+            /home/runner/work/AndroidAPS/AndroidAPS/wear/build/outputs/apk/full/release/output-metadata.json
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:

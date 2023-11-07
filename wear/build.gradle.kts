@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -72,6 +73,36 @@ android {
             applicationId = "info.nightscout.aapsclient2"
             dimension = "standard"
             versionName = Versions.appVersion + "-aapsclient2"
+        }
+    }
+
+    signingConfigs {
+        create("fullRelease") {
+            try {
+                val properties = File("C:\\Users\\peter\\.gradle", "gradle.properties").inputStream().use {
+                    Properties().apply { load(it) }
+                }
+                val propKeyAlias = properties.getValue("keyAlias") as String
+                val propStorePassword = properties.getValue("storePassword") as String
+                val propKeyPassword = properties.getValue("keyPassword") as String
+                storeFile = file("C:\\Users\\peter\\AndroidStudioProjects\\AndroidAPS\\keys\\peter_keys.jks")
+                storePassword = "$propStorePassword"
+                keyAlias = "$propKeyAlias"
+                keyPassword = "$propKeyPassword"
+            } catch (e: Exception) {
+                if (System.getenv("STORE_PASS")==null) {
+                    throw GradleException("Can't find credentials")
+                }
+                storeFile = file("keystore.jks")
+                storePassword = System.getenv("STORE_PASS")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASS")
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("fullRelease")
         }
     }
 }
