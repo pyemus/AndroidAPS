@@ -37,22 +37,22 @@ jobs:
           distribution: 'adopt-openj9'
           cache: gradle
       - name: Injecting keystore
-        run: echo "$KEYSTORE" | base64 -d > app/keystore.jks
+        run: echo "$KEYSTORE" | base64 -d > app/keystore.jks &&  echo "$KEYSTORE" | base64 -d > wear/keystore.jks
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-      - name: Path print
-        run: pwd && ls -la && ls app/
-      - name: Make prop file
-        run: touch app/local.properties && chmod +x app/local.properties
-      - name: print vars
-        run: cat app/local.properties
+    #  - name: Path print
+     #   run: pwd && ls -la && ls app/
+      #- name: Make prop file
+     #   run: touch app/local.properties && chmod +x app/local.properties
+    #  - name: print vars
+    #    run: cat app/local.properties
       - name: Assembling release apk
         run: ./gradlew clean :app:assembleFullRelease -s -i -Pci=true
       - name: Assembling release wear
         run: ./gradlew :wear:assembleFullRelease -s -i -Pci=true
       - name: Path print
-        run: ls -la app/build/outputs/apk/full && ls -la app/build/outputs/apk/full/release && ls
-          -la app/ && ls -la wear/build/outputs/apk/full/release
+        run: ls -la app/build/outputs/apk/full/release && ls -la app/
+          && ls -la wear/build/outputs/apk/full/release
       - uses: actions/upload-artifact@v3
         with:
           name: AAPS apk
