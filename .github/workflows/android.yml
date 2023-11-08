@@ -58,8 +58,8 @@ jobs:
         with:
           name: AAPS apk artifacts
           path: |
-            **/*.apk
-            **/output-metadata.json
+            **/*-full-release.apk
+            wear/build/outputs/**/output-metadata.json
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:
