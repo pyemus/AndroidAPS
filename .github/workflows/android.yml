@@ -51,7 +51,8 @@ jobs:
       - name: Assembling release wear
         run: ./gradlew :wear:assembleFullRelease -s -i -Pci=true
       - name: Path print
-        run: ls -la app/build/outputs/apk/full/release && ls -la app/
+        run: pwd
+          && ls -la app/build/outputs/apk/full/release 
           && ls -la wear/build/outputs/apk/full/release
       - uses: actions/upload-artifact@v3
         with:
