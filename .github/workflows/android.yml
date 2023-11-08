@@ -56,11 +56,10 @@ jobs:
           && ls -la wear/build/outputs/apk/full/release
       - uses: actions/upload-artifact@v3
         with:
-          name: AAPS apks
-          path:
-            /home/runner/work/AndroidAPS/AndroidAPS/app/build/outputs/apk/full/release/app-full-release.apk
-            /home/runner/work/AndroidAPS/AndroidAPS/wear/build/outputs/apk/full/release/wear-full-release.apk
-            /home/runner/work/AndroidAPS/AndroidAPS/wear/build/outputs/apk/full/release/output-metadata.json
+          name: AAPS apk artifacts
+          path: |
+            **/*.apk
+            **/output-metadata.json
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:
