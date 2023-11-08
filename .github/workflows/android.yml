@@ -60,6 +60,7 @@ jobs:
           path: |
             **/*-full-release.apk
             wear/build/outputs/**/output-metadata.json
+            app/build/outputs/**/output-metadata.json
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:
