@@ -58,10 +58,9 @@ jobs:
         with:
           name: AAPS apk
           path:
-            /home/runner/work/AndroidAPS/app/build/outputs/apk/full/release/app-full
-            -release.apk
-            /home/runner/work/AndroidAPS/wear/build/outputs/apk/full/release/wear-full-release.apk
-            /home/runner/work/AndroidAPS/wear/build/outputs/apk/full/release/output-metadata.json
+            app/build/outputs/apk/full/release/app-full-release.apk
+            wear/build/outputs/apk/full/release/wear-full-release.apk
+            wear/build/outputs/apk/full/release/output-metadata.json
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:
