@@ -117,6 +117,9 @@ android {
             signingConfig = signingConfigs.getByName("fullRelease")
         }
     }
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 allprojects {
