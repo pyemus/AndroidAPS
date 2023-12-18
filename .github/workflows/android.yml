@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'adopt-openj9'
+          distribution: 'adopt'
           cache: gradle
       - name: Injecting keystore
         run: echo "$KEYSTORE" | base64 -d > app/keystore.jks &&  echo "$KEYSTORE" | base64 -d > wear/keystore.jks
