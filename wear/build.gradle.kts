@@ -91,13 +91,14 @@ android {
     signingConfigs {
         create("fullRelease") {
             try {
-                val properties = File("C:\\Users\\peter\\.gradle", "gradle.properties").inputStream().use {
+                val propertiesFile = File(System.getProperty("user.home") + File.separator + ".gradle" + File.separator + "gradle.properties")
+                val properties = propertiesFile.inputStream().use {
                     Properties().apply { load(it) }
                 }
-                val propKeyAlias = properties.getValue("keyAlias") as String
-                val propStorePassword = properties.getValue("storePassword") as String
-                val propKeyPassword = properties.getValue("keyPassword") as String
-                storeFile = file("C:\\Users\\peter\\AndroidStudioProjects\\AndroidAPS\\keys\\peter_keys.jks")
+                val propKeyAlias = properties.getValue("AAPS_KEY_ALIAS") as String
+                val propStorePassword = properties.getValue("AAPS_STORE_PASS") as String
+                val propKeyPassword = properties.getValue("AAPS_KEY_PASS") as String
+                storeFile = file("$projectDir${File.separator}keys${File.separator}peter_keys.jks")
                 storePassword = "$propStorePassword"
                 keyAlias = "$propKeyAlias"
                 keyPassword = "$propKeyPassword"
