@@ -54,7 +54,7 @@ jobs:
         run: pwd
           && ls -la app/build/outputs/apk/full/release 
           && ls -la wear/build/outputs/apk/full/release
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: AAPS apk artifacts
           path: |
