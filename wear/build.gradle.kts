@@ -98,7 +98,7 @@ android {
                 val propKeyAlias = properties.getValue("AAPS_KEY_ALIAS") as String
                 val propStorePassword = properties.getValue("AAPS_STORE_PASS") as String
                 val propKeyPassword = properties.getValue("AAPS_KEY_PASS") as String
-                storeFile = file("$projectDir${File.separator}keys${File.separator}peter_keys.jks")
+                storeFile = file("${projectDir.parentFile}${File.separator}key${File.separator}peter_keys.jks")
                 storePassword = "$propStorePassword"
                 keyAlias = "$propKeyAlias"
                 keyPassword = "$propKeyPassword"
