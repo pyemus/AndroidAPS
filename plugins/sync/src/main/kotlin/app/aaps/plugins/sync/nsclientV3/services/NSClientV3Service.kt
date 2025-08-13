@@ -13,7 +13,8 @@ import app.aaps.core.interfaces.nsclient.NSAlarm
 import app.aaps.core.interfaces.nsclient.StoreDataForDb
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.rx.bus.RxBus
-import app.aaps.core.interfaces.rx.events.*
+import app.aaps.core.interfaces.rx.events.EventDismissNotification
+import app.aaps.core.interfaces.rx.events.EventNSClientNewLog
 import app.aaps.core.interfaces.sharedPreferences.SP
 import app.aaps.core.interfaces.ui.UiInteraction
 import app.aaps.core.interfaces.utils.fabric.FabricPrivacy
@@ -224,16 +225,16 @@ class NSClientV3Service : DaggerService() {
         when (collection) {
             "devicestatus" -> docString.toNSDeviceStatus().let { nsDeviceStatusHandler.handleNewData(arrayOf(it)) }
             "entries"      -> docString.toNSSgvV3()?.let {
-                nsIncomingDataProcessor.processSgvs(listOf(it))
+                nsIncomingDataProcessor.processSgvs(listOf(it), doFullSync = false)
                 storeDataForDb.storeGlucoseValuesToDb()
             }
 
             "profile"      ->
-                nsIncomingDataProcessor.processProfile(docJson)
+                nsIncomingDataProcessor.processProfile(docJson, doFullSync = false)
 
             "treatments"   -> docString.toNSTreatment()?.let {
-                nsIncomingDataProcessor.processTreatments(listOf(it))
-                storeDataForDb.storeTreatmentsToDb()
+                nsIncomingDataProcessor.processTreatments(listOf(it), doFullSync = false)
+                storeDataForDb.storeTreatmentsToDb(fullSync = false)
             }
 
             "foods"        -> docString.toNSFood()?.let {
