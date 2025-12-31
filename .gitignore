@@ -34,3 +34,6 @@ key/
 /keys/
 /keys/keys.txt
 /keys/peter_keys.jks
+/buildSrc/.kotlin
+.claude/settings.local.json
+/CLAUDE.md
