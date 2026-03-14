@@ -36,4 +36,4 @@ key/
 /keys/peter_keys.jks
 /buildSrc/.kotlin
 .claude/settings.local.json
-/CLAUDE.md
+.claude/CLAUDE_COMMANDS.md
