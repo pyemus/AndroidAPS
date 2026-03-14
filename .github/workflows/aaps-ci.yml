@@ -149,7 +149,7 @@ jobs:
           echo "✅ Access token obtained."
 
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set BUILD_VARIANT
         run: |
