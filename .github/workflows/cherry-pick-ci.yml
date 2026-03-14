@@ -206,7 +206,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           # When upgrading the JDK, please update this section accordingly as well.
           java-version: 21
