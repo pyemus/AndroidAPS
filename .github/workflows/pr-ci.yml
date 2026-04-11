@@ -187,6 +187,11 @@ jobs:
           ref: ${{ steps.pr_ref.outputs.ref_name }}
           fetch-depth: 1
 
+      - name: Load jdk versions
+        run: |
+          JAVA_VERSION=$(jq -r '.default' .github/jdk-map.json)
+          echo "JAVA_VERSION=$JAVA_VERSION" >> $GITHUB_ENV
+
       - name: Set BUILD_VARIANT
         run: |
           BUILD_VARIANT="${{ github.event.inputs.buildVariant }}"
@@ -214,8 +219,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          # When upgrading the JDK, please update this section accordingly as well.
-          java-version: 21
+          # Java version is defined in .github/versions.env
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: gradle
 
