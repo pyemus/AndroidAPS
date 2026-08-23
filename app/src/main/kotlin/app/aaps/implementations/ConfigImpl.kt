@@ -43,7 +43,6 @@ class ConfigImpl @Inject constructor(
     private var showUserActionsOnWatchOnly: Boolean? = null
     private var ignoreNightscoutV3Errors: Boolean? = null
     private var doNotSendSmsOnProfileChange: Boolean? = null
-    private var enableAutotune: Boolean? = null
     private var enableOmnipodDriftCompensation: Boolean? = null
     private var disableLeakCanary: Boolean? = null
 
@@ -54,7 +53,12 @@ class ConfigImpl @Inject constructor(
     override fun showUserActionsOnWatchOnly(): Boolean = showUserActionsOnWatchOnly ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("show_user_actions_on_watch_only") != null).also { showUserActionsOnWatchOnly = it }
     override fun ignoreNightscoutV3Errors(): Boolean = ignoreNightscoutV3Errors ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("ignore_nightscout_v3_errors") != null).also { ignoreNightscoutV3Errors = it }
     override fun doNotSendSmsOnProfileChange(): Boolean = doNotSendSmsOnProfileChange ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("do_not_send_sms_on_profile_change") != null).also { doNotSendSmsOnProfileChange = it }
-    override fun enableAutotune(): Boolean = enableAutotune ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("enable_autotune") != null).also { enableAutotune = it }
+    // Autotune is force-enabled in this build. Upstream hides the plugin unless
+    // extra/enable_autotune exists, but that marker is looked up through SAF and
+    // did not see a file created over adb -- AAPS restarted with the file in
+    // place and still reported the plugin as unavailable. Deciding it here
+    // removes the dependency on a file the app may or may not be able to see.
+    override fun enableAutotune(): Boolean = true
     override fun enableOmnipodDriftCompensation(): Boolean = enableOmnipodDriftCompensation ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("omnipod_drift_compensation") != null).also { enableOmnipodDriftCompensation = it }
     override fun disableLeakCanary(): Boolean = disableLeakCanary ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("disable_leakcanary") != null).also { disableLeakCanary = it }
 }

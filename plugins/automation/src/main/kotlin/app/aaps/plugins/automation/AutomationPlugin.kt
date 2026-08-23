@@ -403,7 +403,10 @@ class AutomationPlugin @Inject constructor(
             ActionSendSMS(injector),
             ActionSMBChange(injector)
         )
-        if (config.isEngineeringMode() && config.isDev())
+        // Matches how AutotunePlugin gates itself: isDev() is false on any
+        // release build, so without enableAutotune() the action can never
+        // appear and Autotune cannot be scheduled at all.
+        if (config.isEngineeringMode() && config.isDev() || config.enableAutotune())
             actions.add(ActionRunAutotune(injector))
 
         return actions.toList()
