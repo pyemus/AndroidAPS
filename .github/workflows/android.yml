@@ -2,7 +2,7 @@ name: Android CI for AAPS
 
 on:
   push:
-    branches: [ "master-peter" ]
+    branches: [ "master-peter", "feature/skip-objectives" ]
   pull_request:
     branches: [ "master-peter" ]
   workflow_dispatch:
