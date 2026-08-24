@@ -59,6 +59,14 @@ class ConfigImpl @Inject constructor(
     // place and still reported the plugin as unavailable. Deciding it here
     // removes the dependency on a file the app may or may not be able to see.
     override fun enableAutotune(): Boolean = true
+
+    // Objectives are force-skipped in this build. The Objectives plugin stays
+    // enabled and keeps tracking/showing real progress, but it no longer vetoes
+    // loop invocation, closed loop, autosens, SMB or automation. Decided here
+    // rather than via an extra/ marker file for the same reason as
+    // enableAutotune() above -- the SAF lookup does not see files created over adb.
+    override fun skipObjectives(): Boolean = true
+
     override fun enableOmnipodDriftCompensation(): Boolean = enableOmnipodDriftCompensation ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("omnipod_drift_compensation") != null).also { enableOmnipodDriftCompensation = it }
     override fun disableLeakCanary(): Boolean = disableLeakCanary ?: (fileListProvider.get().ensureExtraDirExists()?.findFile("disable_leakcanary") != null).also { disableLeakCanary = it }
 }

@@ -30,7 +30,7 @@ class ObjectivesPlugin @Inject constructor(
     aapsLogger: AAPSLogger,
     rh: ResourceHelper,
     preferences: Preferences,
-    config: Config,
+    private val config: Config,
     val objectives: List<@JvmSuppressWildcards Objective>
 ) : PluginBaseWithPreferences(
     pluginDescription = PluginDescription()
@@ -74,6 +74,8 @@ class ObjectivesPlugin @Inject constructor(
      * Constraints interface
      */
     override fun isLoopInvocationAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (!objectives[FIRST_OBJECTIVE].isStarted)
@@ -82,6 +84,8 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isLgsForced(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (objectives[LGS_OBJECTIVE].isStarted && !objectives[LGS_OBJECTIVE].isAccomplished)
@@ -90,6 +94,8 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isClosedLoopAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (!objectives[CLOSED_LOOP_OBJECTIVE].isStarted)
@@ -98,6 +104,8 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isAutosensModeEnabled(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (!objectives[AUTOSENS_OBJECTIVE].isStarted)
@@ -106,6 +114,8 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isSMBModeEnabled(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (!objectives[SMB_OBJECTIVE].isStarted)
@@ -114,6 +124,8 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isAutomationEnabled(value: Constraint<Boolean>): Constraint<Boolean> {
+        // Objectives do not restrict anything in this build
+        if (config.skipObjectives()) return value
         // Check if initialized
         if (objectives.isEmpty()) return value
         if (!objectives[AUTO_OBJECTIVE].isStarted)
@@ -122,5 +134,5 @@ class ObjectivesPlugin @Inject constructor(
     }
 
     override fun isAccomplished(index: Int) = objectives[index].isAccomplished
-    override fun isStarted(index: Int): Boolean = objectives[index].isStarted
+    override fun isStarted(index: Int): Boolean = config.skipObjectives() || objectives[index].isStarted
 }

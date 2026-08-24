@@ -34,6 +34,13 @@ interface Config {
     fun ignoreNightscoutV3Errors(): Boolean
     fun doNotSendSmsOnProfileChange(): Boolean
     fun enableAutotune(): Boolean
+
+    /**
+     * Objectives do not restrict any feature in this build. Progress is still
+     * tracked and shown, it just isn't a prerequisite for anything.
+     */
+    fun skipObjectives(): Boolean
+
     fun enableOmnipodDriftCompensation(): Boolean
 
     /**

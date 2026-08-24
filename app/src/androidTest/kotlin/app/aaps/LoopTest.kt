@@ -105,20 +105,18 @@ class LoopTest @Inject constructor() {
         // Are we running full flavor?
         assertThat(config.APS).isTrue()
 
-        // Loop should be limited by unfinished objectives
+        // Objectives must not restrict anything in this build -- Config.skipObjectives().
+        // Objective 1 is deliberately left unstarted for the rest of this test.
+        assertThat(config.skipObjectives()).isTrue()
+        assertThat(objectivesPlugin.objectives[0].isStarted).isFalse()
+
+        // Loop is not limited by the unstarted objective, so it falls straight through
+        // to the next unmet precondition: the missing profile
+        (profileFunction as ProfileFunctionImpl).cache.clear()
         loop.invoke("test1", allowNotification = false)
         var loopStatusEvent = rxHelper.waitFor(EventLoopSetLastRunGui::class.java, comment = "step1")
         assertThat(loopStatusEvent.first).isTrue()
-        assertThat((loopStatusEvent.second as EventLoopSetLastRunGui).text).contains("Objective 1 not started")
-
-        // So start objectives
-        objectivesPlugin.objectives[0].startedOn = 1
-
-        // Now there should be missing profile
-        (profileFunction as ProfileFunctionImpl).cache.clear()
-        loop.invoke("test2", allowNotification = false)
-        loopStatusEvent = rxHelper.waitFor(EventLoopSetLastRunGui::class.java, comment = "step2")
-        assertThat(loopStatusEvent.first).isTrue()
+        assertThat((loopStatusEvent.second as EventLoopSetLastRunGui).text).doesNotContain("Objective 1 not started")
         assertThat((loopStatusEvent.second as EventLoopSetLastRunGui).text).contains("NO PROFILE SET")
 
         // Set Profile in ProfilePlugin

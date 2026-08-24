@@ -104,4 +104,70 @@ class ObjectivesPluginTest : TestBaseWithProfile() {
         assertThat(c.getReasons()).contains("Objective 9 not started")
         assertThat(c.value()).isFalse()
     }
+
+    /**
+     * skipObjectives() == true: the plugin must contribute no restriction and no
+     * reason, even with every objective unstarted. The tests above cover the
+     * opposite branch -- the mocked Config returns false by default.
+     */
+    @Test fun skipObjectivesShouldNotLimitLoopInvocation() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.FIRST_OBJECTIVE].startedOn = 0
+        val c = objectivesPlugin.isLoopInvocationAllowed(ConstraintObject(true, aapsLogger))
+        assertThat(c.value()).isTrue()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    @Test fun skipObjectivesShouldNotForceLgs() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.LGS_OBJECTIVE].startedOn = 1
+        objectivesPlugin.objectives[Objectives.LGS_OBJECTIVE].accomplishedOn = 0
+        val c = objectivesPlugin.isLgsForced(ConstraintObject(false, aapsLogger))
+        assertThat(c.value()).isFalse()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    @Test fun skipObjectivesShouldNotLimitClosedLoop() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.CLOSED_LOOP_OBJECTIVE].startedOn = 0
+        val c = objectivesPlugin.isClosedLoopAllowed(ConstraintObject(true, aapsLogger))
+        assertThat(c.value()).isTrue()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    @Test fun skipObjectivesShouldNotLimitAutosensMode() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.AUTOSENS_OBJECTIVE].startedOn = 0
+        val c = objectivesPlugin.isAutosensModeEnabled(ConstraintObject(true, aapsLogger))
+        assertThat(c.value()).isTrue()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    @Test fun skipObjectivesShouldNotLimitSMBMode() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.SMB_OBJECTIVE].startedOn = 0
+        val c = objectivesPlugin.isSMBModeEnabled(ConstraintObject(true, aapsLogger))
+        assertThat(c.value()).isTrue()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    @Test fun skipObjectivesShouldNotLimitAutomation() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.AUTO_OBJECTIVE].startedOn = 0
+        val c = objectivesPlugin.isAutomationEnabled(ConstraintObject(true, aapsLogger))
+        assertThat(c.value()).isTrue()
+        assertThat(c.getReasons()).isEmpty()
+    }
+
+    /**
+     * The setup wizard gates its non-skippable Objectives screen on this, so it has
+     * to report started. Stored progress itself is untouched -- the fragment reads
+     * the Objective directly, not the plugin.
+     */
+    @Test fun skipObjectivesShouldReportFirstObjectiveStarted() {
+        whenever(config.skipObjectives()).thenReturn(true)
+        objectivesPlugin.objectives[Objectives.FIRST_OBJECTIVE].startedOn = 0
+        assertThat(objectivesPlugin.isStarted(Objectives.FIRST_OBJECTIVE)).isTrue()
+        assertThat(objectivesPlugin.objectives[Objectives.FIRST_OBJECTIVE].isStarted).isFalse()
+    }
 }
