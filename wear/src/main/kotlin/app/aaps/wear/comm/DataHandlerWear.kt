@@ -29,6 +29,7 @@ import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.wear.R
+import app.aaps.wear.complications.BgRangedComplication
 import app.aaps.wear.complications.BrCobIobComplication
 import app.aaps.wear.complications.BrCobIobComplicationExt1
 import app.aaps.wear.complications.BrCobIobComplicationExt2
@@ -37,13 +38,17 @@ import app.aaps.wear.complications.BrIobComplication
 import app.aaps.wear.complications.CobDetailedComplication
 import app.aaps.wear.complications.CobIconComplication
 import app.aaps.wear.complications.CobIobComplication
+import app.aaps.wear.complications.DeltaComplication
+import app.aaps.wear.complications.GraphComplication
 import app.aaps.wear.complications.IobDetailedComplication
 import app.aaps.wear.complications.IobIconComplication
 import app.aaps.wear.complications.LongStatusComplication
 import app.aaps.wear.complications.LongStatusFlippedComplication
+import app.aaps.wear.complications.LoopStatusComplication
 import app.aaps.wear.complications.SgvComplication
 import app.aaps.wear.complications.SgvComplicationExt1
 import app.aaps.wear.complications.SgvComplicationExt2
+import app.aaps.wear.complications.TempTargetComplication
 import app.aaps.wear.complications.UploaderBatteryComplication
 import app.aaps.wear.data.ComplicationDataRepository
 import app.aaps.wear.interaction.WatchfaceConfigurationActivity
@@ -59,7 +64,9 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -77,6 +84,8 @@ class DataHandlerWear @Inject constructor(
 
     // Coroutine scope for DataStore operations
     private val dataStoreScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var graphUpdateJob: Job? = null
+    private val graphUpdateDebounceMs = 1500L
 
     private val disposable = CompositeDisposable()
 
@@ -194,6 +203,7 @@ class DataHandlerWear @Inject constructor(
                     // Trigger complications AFTER DataStore write completes
                     // This ensures complications showing IOB/COB/BR update immediately
                     triggerComplicationUpdates()
+                    scheduleGraphUpdate()
                 }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
@@ -209,6 +219,7 @@ class DataHandlerWear @Inject constructor(
 
                     // Trigger complications AFTER DataStore write completes
                     triggerComplicationUpdates()
+                    scheduleGraphUpdate()
                 }
 
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
@@ -221,6 +232,7 @@ class DataHandlerWear @Inject constructor(
                 // Store in DataStore
                 dataStoreScope.launch {
                     complicationDataRepository.updateGraphData(it)
+                    scheduleGraphUpdate()
                 }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
@@ -232,6 +244,7 @@ class DataHandlerWear @Inject constructor(
                 // Store in DataStore
                 dataStoreScope.launch {
                     complicationDataRepository.updateTreatmentData(it)
+                    scheduleGraphUpdate()
                 }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
@@ -447,6 +460,22 @@ class DataHandlerWear @Inject constructor(
      * TODO: Migrate to androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
      *       when the full complications migration from old support library to modern AndroidX happens
      */
+    /**
+     * Re-render the graph complication once per burst of data (BG, status, graph and treatments
+     * arrive together on every resend from the phone)
+     */
+    private fun scheduleGraphUpdate() {
+        graphUpdateJob?.cancel()
+        graphUpdateJob = dataStoreScope.launch {
+            delay(graphUpdateDebounceMs)
+            try {
+                ComplicationDataSourceUpdateRequester.create(context, ComponentName(context, GraphComplication::class.java)).requestUpdateAll()
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.WEAR, "Failed to trigger graph complication update", e)
+            }
+        }
+    }
+
     private fun triggerComplicationUpdates() {
         val modernComplications = listOf(
             // SGV complications (show glucose values)
@@ -470,7 +499,12 @@ class DataHandlerWear @Inject constructor(
             BrCobIobComplicationExt1::class.java,
             BrCobIobComplicationExt2::class.java,
             // Battery complication
-            UploaderBatteryComplication::class.java
+            UploaderBatteryComplication::class.java,
+            // WFF watch face complications
+            BgRangedComplication::class.java,
+            DeltaComplication::class.java,
+            LoopStatusComplication::class.java,
+            TempTargetComplication::class.java
             // Note: WallpaperComplication is abstract, subclasses will auto-update
         )
 

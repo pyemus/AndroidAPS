@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_face_name">AAPS (WFF)</string>
+    <string name="slot_bg">Blood glucose</string>
+    <string name="slot_loop">Loop status</string>
+    <string name="slot_delta">Delta</string>
+    <string name="slot_battery">Phone battery</string>
+    <string name="slot_basal">Basal rate</string>
+    <string name="slot_temp_target">Temp target</string>
+    <string name="slot_cob_iob">COB / IOB</string>
+    <string name="slot_graph">BG graph</string>
+</resources>

@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AAPS watch face in Watch Face Format (WFF) v1. No code: all AAPS data comes from the
+  complication providers of the AAPS wear app (info.nightscout.androidaps).
+  RANGED_VALUE encodings are defined in wear/.../complications/WffEncoding.kt:
+    BG:   0 low, 1 in range, 2 high, 3 stale / no data
+    Loop: minutes since last loop run clamped to 0..15 (max = stale), -1 unknown
+    TT:   0 profile target, 1 loop adjusted, 2 temp target active
+  Ambient mode shows only BG, arrow, delta and time.
+-->
+<WatchFace width="450" height="450" clipShape="CIRCLE">
+    <Metadata key="CLOCK_TYPE" value="DIGITAL" />
+    <Metadata key="PREVIEW_TIME" value="10:08:32" />
+    <Scene backgroundColor="#FF000000">
+
+        <!-- 5: temp target (top right, clear of the system status icons at top center) -->
+        <ComplicationSlot slotId="5" displayName="slot_temp_target" x="236" y="24" width="112" height="28"
+            supportedTypes="RANGED_VALUE SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.TempTargetComplication"
+                primaryProviderType="RANGED_VALUE"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="112" height="28" />
+            <Complication type="RANGED_VALUE">
+                <Condition>
+                    <Expressions>
+                        <Expression name="tt">[COMPLICATION.RANGED_VALUE_VALUE] &gt; 1.5</Expression>
+                        <Expression name="loop">[COMPLICATION.RANGED_VALUE_VALUE] &gt; 0.5 &amp;&amp; [COMPLICATION.RANGED_VALUE_VALUE] &lt; 1.5</Expression>
+                    </Expressions>
+                    <Compare expression="tt">
+                        <PartText x="0" y="0" width="112" height="28">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFF00">
+                                <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                        </PartText>
+                    </Compare>
+                    <Compare expression="loop">
+                        <PartText x="0" y="0" width="112" height="28">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FF00FF00">
+                                <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                        </PartText>
+                    </Compare>
+                    <Default>
+                        <PartText x="0" y="0" width="112" height="28">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFFFF">
+                                <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                        </PartText>
+                    </Default>
+                </Condition>
+            </Complication>
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="112" height="28">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 1: loop status ring (left of BG) -->
+        <ComplicationSlot slotId="1" displayName="slot_loop" x="62" y="72" width="58" height="58"
+            supportedTypes="RANGED_VALUE SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.LoopStatusComplication"
+                primaryProviderType="RANGED_VALUE"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="58" height="58" />
+            <Complication type="RANGED_VALUE">
+                <Condition>
+                    <Expressions>
+                        <Expression name="unknown">[COMPLICATION.RANGED_VALUE_VALUE] &lt; 0</Expression>
+                        <Expression name="stale">[COMPLICATION.RANGED_VALUE_VALUE] &gt;= [COMPLICATION.RANGED_VALUE_MAX]</Expression>
+                    </Expressions>
+                    <Compare expression="unknown">
+                        <PartDraw x="0" y="0" width="58" height="58">
+                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FF808080" thickness="4" /></Ellipse>
+                        </PartDraw>
+                    </Compare>
+                    <Compare expression="stale">
+                        <PartDraw x="0" y="0" width="58" height="58">
+                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FFFF0000" thickness="4" /></Ellipse>
+                        </PartDraw>
+                    </Compare>
+                    <Default>
+                        <PartDraw x="0" y="0" width="58" height="58">
+                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FF00FF00" thickness="4" /></Ellipse>
+                        </PartDraw>
+                    </Default>
+                </Condition>
+                <PartText x="0" y="0" width="58" height="58">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="58" height="58">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 0: BG (colored) + tinted arrow + reading age -->
+        <ComplicationSlot slotId="0" displayName="slot_bg" x="125" y="52" width="265" height="100"
+            supportedTypes="RANGED_VALUE SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.BgRangedComplication"
+                primaryProviderType="RANGED_VALUE"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="265" height="100" />
+            <Complication type="RANGED_VALUE">
+                <Condition>
+                    <Expressions>
+                        <Expression name="low">[COMPLICATION.RANGED_VALUE_VALUE] &lt; 0.5</Expression>
+                        <Expression name="high">[COMPLICATION.RANGED_VALUE_VALUE] &gt; 1.5 &amp;&amp; [COMPLICATION.RANGED_VALUE_VALUE] &lt; 2.5</Expression>
+                        <Expression name="stale">[COMPLICATION.RANGED_VALUE_VALUE] &gt; 2.5</Expression>
+                    </Expressions>
+                    <Compare expression="low">
+                        <Group name="bgLow" x="0" y="0" width="265" height="100">
+                            <PartText x="0" y="0" width="190" height="100">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FFFF0000">
+                                    <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                            </PartText>
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFFF0000">
+                                <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+                            </PartImage>
+                        </Group>
+                    </Compare>
+                    <Compare expression="high">
+                        <Group name="bgHigh" x="0" y="0" width="265" height="100">
+                            <PartText x="0" y="0" width="190" height="100">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FFFFFF00">
+                                    <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                            </PartText>
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFFFFF00">
+                                <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+                            </PartImage>
+                        </Group>
+                    </Compare>
+                    <Compare expression="stale">
+                        <Group name="bgStale" x="0" y="0" width="265" height="100">
+                            <PartText x="0" y="0" width="190" height="100">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FF808080">
+                                    <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                            </PartText>
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF808080">
+                                <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+                            </PartImage>
+                        </Group>
+                    </Compare>
+                    <Default>
+                        <Group name="bgInRange" x="0" y="0" width="265" height="100">
+                            <PartText x="0" y="0" width="190" height="100">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FF00FF00">
+                                    <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                            </PartText>
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF00FF00">
+                                <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+                            </PartImage>
+                        </Group>
+                    </Default>
+                </Condition>
+                <PartText x="190" y="62" width="70" height="30">
+                    <Variant mode="AMBIENT" target="alpha" value="0" />
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFCCCCCC">
+                        <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="265" height="72">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="64" weight="BOLD" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+                <PartText x="0" y="72" width="265" height="28">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFCCCCCC">
+                        <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 2: delta / avg delta -->
+        <ComplicationSlot slotId="2" displayName="slot_delta" x="40" y="152" width="170" height="34"
+            supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.DeltaComplication"
+                primaryProviderType="SHORT_TEXT"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="170" height="34" />
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="95" height="34">
+                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="28" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+                <PartText x="100" y="0" width="70" height="34">
+                    <Variant mode="AMBIENT" target="alpha" value="0" />
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFAAAAAA">
+                        <Template>(%s)<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 3: phone battery -->
+        <ComplicationSlot slotId="3" displayName="slot_battery" x="210" y="152" width="70" height="34"
+            supportedTypes="RANGED_VALUE SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.UploaderBatteryComplication"
+                primaryProviderType="RANGED_VALUE"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="70" height="34" />
+            <Complication type="RANGED_VALUE">
+                <Condition>
+                    <Expressions>
+                        <Expression name="lowBattery">[COMPLICATION.RANGED_VALUE_VALUE] &lt; 30</Expression>
+                    </Expressions>
+                    <Compare expression="lowBattery">
+                        <PartText x="0" y="0" width="70" height="34">
+                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFF0000">
+                                <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                        </PartText>
+                    </Compare>
+                    <Default>
+                        <PartText x="0" y="0" width="70" height="34">
+                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFCCCCCC">
+                                <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                        </PartText>
+                    </Default>
+                </Condition>
+            </Complication>
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="70" height="34">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFCCCCCC">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 4: basal rate -->
+        <ComplicationSlot slotId="4" displayName="slot_basal" x="280" y="152" width="130" height="34"
+            supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.BrComplication"
+                primaryProviderType="SHORT_TEXT"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="130" height="34" />
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="130" height="34">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFFFFFF">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 6: COB (left) / IOB (right) -->
+        <ComplicationSlot slotId="6" displayName="slot_cob_iob" x="40" y="252" width="370" height="34"
+            supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.CobIobComplication"
+                primaryProviderType="SHORT_TEXT"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="370" height="34" />
+            <Complication type="SHORT_TEXT">
+                <PartText x="0" y="0" width="130" height="34">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFFB347">
+                        <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+                <PartText x="240" y="0" width="130" height="34">
+                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="24" color="#FF1E88E5">
+                        <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- 7: BG graph image (450 x 160, see WffEncoding.GRAPH_FACE_*) -->
+        <ComplicationSlot slotId="7" displayName="slot_graph" x="0" y="288" width="450" height="160"
+            supportedTypes="PHOTO_IMAGE EMPTY" isCustomizable="TRUE">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <DefaultProviderPolicy
+                primaryProvider="info.nightscout.androidaps/app.aaps.wear.complications.GraphComplication"
+                primaryProviderType="PHOTO_IMAGE"
+                defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+            <BoundingBox x="0" y="0" width="450" height="160" />
+            <Complication type="PHOTO_IMAGE">
+                <PartImage x="0" y="0" width="450" height="160">
+                    <Image resource="[COMPLICATION.PHOTO_IMAGE]" />
+                </PartImage>
+            </Complication>
+            <Complication type="EMPTY" />
+        </ComplicationSlot>
+
+        <!-- time -->
+        <DigitalClock x="110" y="186" width="230" height="66">
+            <TimeText x="0" y="0" width="230" height="66" format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="62" color="#FFFFFFFF" />
+            </TimeText>
+        </DigitalClock>
+
+        <!-- date between COB and IOB -->
+        <PartText x="170" y="252" width="110" height="34">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFAAAAAA">
+                <Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
+        </PartText>
+
+    </Scene>
+</WatchFace>

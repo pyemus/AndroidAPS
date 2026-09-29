@@ -272,6 +272,11 @@
     <string name="datalayer_notification_text">AAPS is running in the foreground. To hide notification go to Developer options, App notifications, Allowed watch apps, select AAPS, Turn off Data Layer Foreground Service Channel notification.</string>
     <string name="on">ON</string>
     <string name="off">OFF</string>
+    <string name="complication_bg_ranged">BG (colored, WFF)</string>
+    <string name="complication_delta">Delta &amp; avg delta</string>
+    <string name="complication_loop_status">Loop status</string>
+    <string name="complication_temp_target">Temp target</string>
+    <string name="complication_graph">BG graph</string>
     <string name="complication_full_status">Full Status</string>
     <string name="complication_full_status_flipped">Full Status (flipped)</string>
     <string name="complication_blood_glucose">Blood Glucose</string>

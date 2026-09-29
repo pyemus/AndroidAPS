@@ -18,6 +18,11 @@ import app.aaps.wear.complications.SgvComplicationExt1
 import app.aaps.wear.complications.SgvComplicationExt2
 import app.aaps.wear.complications.UploaderBatteryComplication
 import app.aaps.wear.complications.WallpaperComplication
+import app.aaps.wear.complications.BgRangedComplication
+import app.aaps.wear.complications.DeltaComplication
+import app.aaps.wear.complications.GraphComplication
+import app.aaps.wear.complications.LoopStatusComplication
+import app.aaps.wear.complications.TempTargetComplication
 import app.aaps.wear.heartrate.HeartRateListener
 import app.aaps.wear.tile.ActionsTileService
 import app.aaps.wear.tile.LoopStateTileService
@@ -57,6 +62,11 @@ abstract class WearServicesModule {
     @ContributesAndroidInjector abstract fun contributesSgvComplicationExt2(): SgvComplicationExt2
     @ContributesAndroidInjector abstract fun contributesUploaderBatteryComplication(): UploaderBatteryComplication
     @ContributesAndroidInjector abstract fun contributesWallpaperComplication(): WallpaperComplication
+    @ContributesAndroidInjector abstract fun contributesBgRangedComplication(): BgRangedComplication
+    @ContributesAndroidInjector abstract fun contributesDeltaComplication(): DeltaComplication
+    @ContributesAndroidInjector abstract fun contributesLoopStatusComplication(): LoopStatusComplication
+    @ContributesAndroidInjector abstract fun contributesTempTargetComplication(): TempTargetComplication
+    @ContributesAndroidInjector abstract fun contributesGraphComplication(): GraphComplication
 
     @ContributesAndroidInjector abstract fun contributesBaseWatchFace(): BaseWatchFace
     @ContributesAndroidInjector abstract fun contributesDigitalStyleWatchface(): DigitalStyleWatchface
