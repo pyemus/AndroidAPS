@@ -75,6 +75,8 @@ class EditEventDialog : BaseDialog() {
 
         binding.inputEventTitle.setText(event.title)
         binding.inputEventTitle.isFocusable = !event.readOnly
+        binding.inputMinRepeat.setText(event.minRepeatMinutes.toString())
+        binding.inputMinRepeat.isFocusable = !event.readOnly
         binding.triggerDescription.text = event.trigger.friendlyDescription()
         binding.userAction.isChecked = event.userAction
         binding.enabled.isChecked = event.isEnabled
@@ -138,6 +140,8 @@ class EditEventDialog : BaseDialog() {
         event.title = title
         event.userAction = binding.userAction.isChecked
         event.isEnabled = binding.enabled.isChecked
+        event.minRepeatMinutes = (binding.inputMinRepeat.text?.toString()?.toIntOrNull() ?: AutomationEventObject.MIN_REPEAT_MINUTES)
+            .coerceIn(AutomationEventObject.MIN_REPEAT_MINUTES, AutomationEventObject.MAX_REPEAT_MINUTES)
         // check for at least one trigger
         val con = event.trigger
         if (con.size() == 0 && !event.userAction) {

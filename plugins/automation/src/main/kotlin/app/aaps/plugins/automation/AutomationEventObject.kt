@@ -29,6 +29,8 @@ class AutomationEventObject(private val injector: HasAndroidInjector) : Automati
     var trigger: TriggerConnector = TriggerConnector(injector)
     val actions: MutableList<Action> = ArrayList()
 
+    var minRepeatMinutes: Int = MIN_REPEAT_MINUTES // minimal time between two runs while trigger stays true
+
     var lastRun: Long = 0
 
     init {
@@ -71,6 +73,7 @@ class AutomationEventObject(private val injector: HasAndroidInjector) : Automati
             .put("readOnly", readOnly)
             .put("autoRemove", autoRemove)
             .put("userAction", userAction)
+            .put("minRepeatMinutes", minRepeatMinutes)
             .put("trigger", trigger.toJSON())
             .put("actions", array)
             .toString()
@@ -84,6 +87,7 @@ class AutomationEventObject(private val injector: HasAndroidInjector) : Automati
         readOnly = d.optBoolean("readOnly", false)
         autoRemove = d.optBoolean("autoRemove", false)
         userAction = d.optBoolean("userAction", false)
+        minRepeatMinutes = d.optInt("minRepeatMinutes", MIN_REPEAT_MINUTES).coerceIn(MIN_REPEAT_MINUTES, MAX_REPEAT_MINUTES)
         trigger = TriggerDummy(injector).instantiate(JSONObject(d.getString("trigger"))) as TriggerConnector
         val array = d.getJSONArray("actions")
         actions.clear()
@@ -96,6 +100,12 @@ class AutomationEventObject(private val injector: HasAndroidInjector) : Automati
     }
 
     fun shouldRun(): Boolean {
-        return lastRun <= dateUtil.now() - T.mins(5).msecs()
+        return lastRun <= dateUtil.now() - T.mins(minRepeatMinutes.coerceAtLeast(MIN_REPEAT_MINUTES).toLong()).msecs()
+    }
+
+    companion object {
+
+        const val MIN_REPEAT_MINUTES = 5
+        const val MAX_REPEAT_MINUTES = 24 * 60
     }
 }

@@ -300,6 +300,8 @@ class AutomationPlugin @Inject constructor(
     override fun processEvent(someEvent: AutomationEvent) {
         val event = someEvent as AutomationEventObject
         if (event.canRun() && event.preconditionCanRun()) {
+            // mark as run before executing so a concurrent processActions() pass cannot fire it twice
+            event.lastRun = dateUtil.now()
             val actions = event.actions
             for (action in actions) {
                 action.title = event.title
@@ -329,7 +331,6 @@ class AutomationPlugin @Inject constructor(
                 }
             }
             SystemClock.sleep(1100)
-            event.lastRun = dateUtil.now()
             if (event.autoRemove) remove(event)
         }
     }

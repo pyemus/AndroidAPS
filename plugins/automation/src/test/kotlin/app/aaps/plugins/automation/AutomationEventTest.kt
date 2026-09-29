@@ -1,6 +1,7 @@
 package app.aaps.plugins.automation
 
 import androidx.datastore.preferences.core.preferencesOf
+import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.resources.ResourceHelper
@@ -19,6 +20,7 @@ import dagger.android.HasAndroidInjector
 import org.json.JSONObject
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
+import org.mockito.Mockito.`when`
 import org.skyscreamer.jsonassert.JSONAssert
 
 class AutomationEventTest : TestBase() {
@@ -32,6 +34,7 @@ class AutomationEventTest : TestBase() {
         AndroidInjector {
             if (it is AutomationEventObject) {
                 it.aapsLogger = aapsLogger
+                it.dateUtil = dateUtil
             }
             if (it is Action) {
                 it.aapsLogger = aapsLogger
@@ -53,7 +56,7 @@ class AutomationEventTest : TestBase() {
 
         // export to json
         val eventJsonExpected =
-            "{\"userAction\":false,\"autoRemove\":false,\"readOnly\":false,\"trigger\":\"{\\\"data\\\":{\\\"connectorType\\\":\\\"AND\\\",\\\"triggerList\\\":[\\\"{\\\\\\\"data\\\\\\\":{\\\\\\\"connectorType\\\\\\\":\\\\\\\"AND\\\\\\\",\\\\\\\"triggerList\\\\\\\":[]},\\\\\\\"type\\\\\\\":\\\\\\\"TriggerConnector\\\\\\\"}\\\"]},\\\"type\\\":\\\"TriggerConnector\\\"}\",\"title\":\"Test\",\"systemAction\":false,\"actions\":[\"{\\\"data\\\":{\\\"smbState\\\":true},\\\"type\\\":\\\"ActionSMBChange\\\"}\"],\"enabled\":true}"
+            "{\"userAction\":false,\"autoRemove\":false,\"readOnly\":false,\"trigger\":\"{\\\"data\\\":{\\\"connectorType\\\":\\\"AND\\\",\\\"triggerList\\\":[\\\"{\\\\\\\"data\\\\\\\":{\\\\\\\"connectorType\\\\\\\":\\\\\\\"AND\\\\\\\",\\\\\\\"triggerList\\\\\\\":[]},\\\\\\\"type\\\\\\\":\\\\\\\"TriggerConnector\\\\\\\"}\\\"]},\\\"type\\\":\\\"TriggerConnector\\\"}\",\"title\":\"Test\",\"systemAction\":false,\"minRepeatMinutes\":5,\"actions\":[\"{\\\"data\\\":{\\\"smbState\\\":true},\\\"type\\\":\\\"ActionSMBChange\\\"}\"],\"enabled\":true}"
         JSONAssert.assertEquals(eventJsonExpected, event.toJSON(), true)
 
         // clone
@@ -72,6 +75,34 @@ class AutomationEventTest : TestBase() {
         assertThat(clone.actions).hasSize(1)
         assertThat(event.actions).isNotSameInstanceAs(clone.actions)
         JSONAssert.assertEquals(clone.toJSON(), clone.toJSON(), true)
+    }
+
+    @Test fun minRepeatMinutesLimitsReRun() {
+        val now = 100_000_000L
+        `when`(dateUtil.now()).thenReturn(now)
+        val event = AutomationEventObject(injector)
+        event.minRepeatMinutes = 30
+
+        event.lastRun = now - T.mins(29).msecs()
+        assertThat(event.shouldRun()).isFalse()
+        event.lastRun = now - T.mins(30).msecs()
+        assertThat(event.shouldRun()).isTrue()
+
+        // values below the hardcoded 5 min are not allowed
+        event.minRepeatMinutes = 1
+        event.lastRun = now - T.mins(4).msecs()
+        assertThat(event.shouldRun()).isFalse()
+    }
+
+    @Test fun minRepeatMinutesJson() {
+        val event = AutomationEventObject(injector)
+        event.title = "Test"
+        event.minRepeatMinutes = 45
+        assertThat(AutomationEventObject(injector).fromJSON(event.toJSON()).minRepeatMinutes).isEqualTo(45)
+
+        // events stored before this field existed keep the 5 min default
+        val legacy = JSONObject(event.toJSON()).apply { remove("minRepeatMinutes") }.toString()
+        assertThat(AutomationEventObject(injector).fromJSON(legacy).minRepeatMinutes).isEqualTo(5)
     }
 
     @Test fun hasStopProcessing() {

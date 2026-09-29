@@ -87,6 +87,20 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/taskname" />
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/automation_min_repeat_minutes">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputMinRepeat"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="4" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
