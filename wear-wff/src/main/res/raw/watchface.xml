@@ -6,12 +6,27 @@
     BG:   0 low, 1 in range, 2 high, 3 stale / no data
     Loop: minutes since last loop run clamped to 0..15 (max = stale), -1 unknown
     TT:   0 profile target, 1 loop adjusted, 2 temp target active
+  Colors: Material 3 dark palette (tone ~80), shared with GraphBitmapRenderer.
   Ambient mode shows only BG, arrow, delta and time.
 -->
 <WatchFace width="450" height="450" clipShape="CIRCLE">
     <Metadata key="CLOCK_TYPE" value="DIGITAL" />
     <Metadata key="PREVIEW_TIME" value="10:08:32" />
     <Scene backgroundColor="#FF000000">
+
+        <!-- Material surface containers behind the info rows (hidden in ambient) -->
+        <PartDraw x="34" y="152" width="382" height="34">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <RoundRectangle x="0" y="0" width="382" height="34" cornerRadiusX="17" cornerRadiusY="17">
+                <Fill color="#FF1D1E22" />
+            </RoundRectangle>
+        </PartDraw>
+        <PartDraw x="34" y="252" width="382" height="34">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <RoundRectangle x="0" y="0" width="382" height="34" cornerRadiusX="17" cornerRadiusY="17">
+                <Fill color="#FF1D1E22" />
+            </RoundRectangle>
+        </PartDraw>
 
         <!-- 5: temp target (top right, clear of the system status icons at top center) -->
         <ComplicationSlot slotId="5" displayName="slot_temp_target" x="236" y="24" width="112" height="28"
@@ -30,19 +45,19 @@
                     </Expressions>
                     <Compare expression="tt">
                         <PartText x="0" y="0" width="112" height="28">
-                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFF00">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFF3C969">
                                 <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                         </PartText>
                     </Compare>
                     <Compare expression="loop">
                         <PartText x="0" y="0" width="112" height="28">
-                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FF00FF00">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FF86D993">
                                 <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                         </PartText>
                     </Compare>
                     <Default>
                         <PartText x="0" y="0" width="112" height="28">
-                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFFFF">
+                            <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFE3E2E6">
                                 <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                         </PartText>
                     </Default>
@@ -50,7 +65,7 @@
             </Complication>
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="112" height="28">
-                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFFFFFFF">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -74,28 +89,28 @@
                     </Expressions>
                     <Compare expression="unknown">
                         <PartDraw x="0" y="0" width="58" height="58">
-                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FF808080" thickness="4" /></Ellipse>
+                            <Ellipse x="3" y="3" width="52" height="52"><Fill color="#FF1D1E22" /><Stroke color="#FF8E9099" thickness="5" /></Ellipse>
                         </PartDraw>
                     </Compare>
                     <Compare expression="stale">
                         <PartDraw x="0" y="0" width="58" height="58">
-                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FFFF0000" thickness="4" /></Ellipse>
+                            <Ellipse x="3" y="3" width="52" height="52"><Fill color="#FF1D1E22" /><Stroke color="#FFFF897D" thickness="5" /></Ellipse>
                         </PartDraw>
                     </Compare>
                     <Default>
                         <PartDraw x="0" y="0" width="58" height="58">
-                            <Ellipse x="3" y="3" width="52" height="52"><Stroke color="#FF00FF00" thickness="4" /></Ellipse>
+                            <Ellipse x="3" y="3" width="52" height="52"><Fill color="#FF1D1E22" /><Stroke color="#FF86D993" thickness="5" /></Ellipse>
                         </PartDraw>
                     </Default>
                 </Condition>
                 <PartText x="0" y="0" width="58" height="58">
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFFFFFFF">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
             </Complication>
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="58" height="58">
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFFFFFFF">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="20" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -120,10 +135,10 @@
                     <Compare expression="low">
                         <Group name="bgLow" x="0" y="0" width="265" height="100">
                             <PartText x="0" y="0" width="190" height="100">
-                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FFFF0000">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="84" weight="MEDIUM" color="#FFFF897D">
                                     <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                             </PartText>
-                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFFF0000">
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFFF897D">
                                 <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
                             </PartImage>
                         </Group>
@@ -131,10 +146,10 @@
                     <Compare expression="high">
                         <Group name="bgHigh" x="0" y="0" width="265" height="100">
                             <PartText x="0" y="0" width="190" height="100">
-                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FFFFFF00">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="84" weight="MEDIUM" color="#FFF3C969">
                                     <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                             </PartText>
-                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFFFFF00">
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FFF3C969">
                                 <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
                             </PartImage>
                         </Group>
@@ -142,10 +157,10 @@
                     <Compare expression="stale">
                         <Group name="bgStale" x="0" y="0" width="265" height="100">
                             <PartText x="0" y="0" width="190" height="100">
-                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FF808080">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="84" weight="MEDIUM" color="#FF8E9099">
                                     <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                             </PartText>
-                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF808080">
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF8E9099">
                                 <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
                             </PartImage>
                         </Group>
@@ -153,10 +168,10 @@
                     <Default>
                         <Group name="bgInRange" x="0" y="0" width="265" height="100">
                             <PartText x="0" y="0" width="190" height="100">
-                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="#FF00FF00">
+                                <Text align="END"><Font family="SYNC_TO_DEVICE" size="84" weight="MEDIUM" color="#FF86D993">
                                     <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                             </PartText>
-                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF00FF00">
+                            <PartImage x="198" y="10" width="50" height="50" tintColor="#FF86D993">
                                 <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
                             </PartImage>
                         </Group>
@@ -164,17 +179,17 @@
                 </Condition>
                 <PartText x="190" y="62" width="70" height="30">
                     <Variant mode="AMBIENT" target="alpha" value="0" />
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFCCCCCC">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFC4C6D0">
                         <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
                 </PartText>
             </Complication>
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="265" height="72">
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="64" weight="BOLD" color="#FFFFFFFF">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="62" weight="MEDIUM" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
                 <PartText x="0" y="72" width="265" height="28">
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFCCCCCC">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFC4C6D0">
                         <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -191,12 +206,12 @@
             <BoundingBox x="0" y="0" width="170" height="34" />
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="95" height="34">
-                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="28" color="#FFFFFFFF">
+                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="28" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
                 <PartText x="100" y="0" width="70" height="34">
                     <Variant mode="AMBIENT" target="alpha" value="0" />
-                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FFAAAAAA">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="22" color="#FF9EA1AA">
                         <Template>(%s)<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -219,13 +234,13 @@
                     </Expressions>
                     <Compare expression="lowBattery">
                         <PartText x="0" y="0" width="70" height="34">
-                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFF0000">
+                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFF897D">
                                 <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                         </PartText>
                     </Compare>
                     <Default>
                         <PartText x="0" y="0" width="70" height="34">
-                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFCCCCCC">
+                            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFC4C6D0">
                                 <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                         </PartText>
                     </Default>
@@ -233,7 +248,7 @@
             </Complication>
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="70" height="34">
-                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFCCCCCC">
+                    <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="24" color="#FFC4C6D0">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -251,7 +266,7 @@
             <BoundingBox x="0" y="0" width="130" height="34" />
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="130" height="34">
-                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFFFFFF">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFE3E2E6">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -268,12 +283,12 @@
                 defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
             <BoundingBox x="0" y="0" width="370" height="34" />
             <Complication type="SHORT_TEXT">
-                <PartText x="0" y="0" width="130" height="34">
-                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFFB347">
+                <PartText x="12" y="0" width="130" height="34">
+                    <Text align="START"><Font family="SYNC_TO_DEVICE" size="24" color="#FFFFB870">
                         <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
                 </PartText>
-                <PartText x="240" y="0" width="130" height="34">
-                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="24" color="#FF1E88E5">
+                <PartText x="228" y="0" width="130" height="34">
+                    <Text align="END"><Font family="SYNC_TO_DEVICE" size="24" color="#FFA8C7FA">
                         <Template>%s<Parameter expression="[COMPLICATION.TITLE]" /></Template></Font></Text>
                 </PartText>
             </Complication>
@@ -300,14 +315,14 @@
         <!-- time -->
         <DigitalClock x="110" y="186" width="230" height="66">
             <TimeText x="0" y="0" width="230" height="66" format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER">
-                <Font family="SYNC_TO_DEVICE" size="62" color="#FFFFFFFF" />
+                <Font family="SYNC_TO_DEVICE" size="62" color="#FFE3E2E6" />
             </TimeText>
         </DigitalClock>
 
         <!-- date between COB and IOB -->
         <PartText x="170" y="252" width="110" height="34">
             <Variant mode="AMBIENT" target="alpha" value="0" />
-            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FFAAAAAA">
+            <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FF9EA1AA">
                 <Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
         </PartText>
 
