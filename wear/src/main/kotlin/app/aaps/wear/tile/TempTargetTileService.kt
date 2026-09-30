@@ -1,5 +1,6 @@
 package app.aaps.wear.tile
 
+import app.aaps.wear.R
 import app.aaps.wear.tile.source.TempTargetSource
 import dagger.android.AndroidInjection
 import javax.inject.Inject
@@ -15,5 +16,6 @@ class TempTargetTileService : TileBase() {
     }
 
     override val resourceVersion = "TempTargetTileService"
+    override val titleRes = R.string.tile_title_temp_target
     override val source get() = tempTargetSource
 }

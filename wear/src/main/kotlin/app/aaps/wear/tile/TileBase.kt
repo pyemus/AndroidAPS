@@ -4,29 +4,30 @@ package app.aaps.wear.tile
 
 import android.content.res.Resources
 import androidx.annotation.DrawableRes
-import androidx.core.content.ContextCompat
+import androidx.annotation.StringRes
 import androidx.wear.protolayout.ActionBuilders
-import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.DeviceParametersBuilders.DeviceParameters
-import androidx.wear.protolayout.DeviceParametersBuilders.SCREEN_SHAPE_ROUND
-import androidx.wear.protolayout.DimensionBuilders.SpProp
 import androidx.wear.protolayout.DimensionBuilders.dp
-import androidx.wear.protolayout.DimensionBuilders.sp
-import androidx.wear.protolayout.LayoutElementBuilders.Box
+import androidx.wear.protolayout.DimensionBuilders.expand
 import androidx.wear.protolayout.LayoutElementBuilders.Column
-import androidx.wear.protolayout.LayoutElementBuilders.FONT_WEIGHT_BOLD
-import androidx.wear.protolayout.LayoutElementBuilders.FontStyle
-import androidx.wear.protolayout.LayoutElementBuilders.Image
+import androidx.wear.protolayout.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
-import androidx.wear.protolayout.LayoutElementBuilders.Row
 import androidx.wear.protolayout.LayoutElementBuilders.Spacer
-import androidx.wear.protolayout.LayoutElementBuilders.Text
-import androidx.wear.protolayout.ModifiersBuilders.Background
 import androidx.wear.protolayout.ModifiersBuilders.Clickable
-import androidx.wear.protolayout.ModifiersBuilders.Corner
-import androidx.wear.protolayout.ModifiersBuilders.Modifiers
-import androidx.wear.protolayout.ModifiersBuilders.Semantics
+import androidx.wear.protolayout.ModifiersBuilders.Padding
 import androidx.wear.protolayout.TimelineBuilders.Timeline
+import androidx.wear.protolayout.material3.ButtonColors
+import androidx.wear.protolayout.material3.MaterialScope
+import androidx.wear.protolayout.material3.Typography
+import androidx.wear.protolayout.material3.buttonGroup
+import androidx.wear.protolayout.material3.icon
+import androidx.wear.protolayout.material3.iconButton
+import androidx.wear.protolayout.material3.materialScope
+import androidx.wear.protolayout.material3.primaryLayout
+import androidx.wear.protolayout.material3.text
+import androidx.wear.protolayout.modifiers.LayoutModifier
+import androidx.wear.protolayout.modifiers.contentDescription
+import androidx.wear.protolayout.types.layoutString
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.RequestBuilders.ResourcesRequest
 import androidx.wear.tiles.ResourceBuilders
@@ -45,12 +46,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.guava.future
 import javax.inject.Inject
-import kotlin.math.sqrt
 
-private const val SPACING_ACTIONS = 3f
-private const val ICON_SIZE_FRACTION = 0.4f // Percentage of button diameter
-private val BUTTON_COLOR = R.color.gray_850
-private const val LARGE_SCREEN_WIDTH_DP = 210
+private const val SPACING_ROWS_DP = 4f
+private const val ICON_SIZE_DP = 26f
+private const val BUTTON_PADDING_DP = 4f
 
 /**
  * Data source for Wear OS tiles.
@@ -152,6 +151,9 @@ abstract class TileBase : TileService() {
     abstract val resourceVersion: String
     abstract val source: TileSource
 
+    /** Short title shown at the top of the tile */
+    @StringRes open val titleRes: Int? = null
+
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
@@ -221,65 +223,98 @@ abstract class TileBase : TileService() {
     /**
      * Build the tile layout based on wear control state and selected actions.
      *
-     * Layout algorithm:
-     * - DISABLED state: Show "Wear control not enabled" message
-     * - NO_DATA state: Show "No data" message
-     * - ENABLED state with actions: Arrange buttons in grid pattern:
-     *   - 1 action: Single centered button
-     *   - 2 actions: Two buttons side-by-side
-     *   - 3 actions: One on top row, two on bottom row
-     *   - 4 actions: 2x2 grid with vertical spacing
-     * - ENABLED state with no actions: Show "No configuration" message
+     * Uses the Material 3 Expressive tile components (protolayout-material3), the same style as
+     * the system tiles, including the device dynamic color theme:
+     * - Title slot: short tile name
+     * - Main slot: message (DISABLED / NO_DATA / no configuration) or 1-4 action buttons:
+     *   - 1 action: single button
+     *   - 2 actions: two buttons side-by-side
+     *   - 3 actions: one on top row, two on bottom row
+     *   - 4 actions: 2x2 grid
      *
      * @param wearControl Current wear control state
      * @param actions List of actions to display (0-4 actions)
      * @param deviceParameters Screen dimensions and shape
      * @return Layout element to render
      */
-    private fun layout(wearControl: WearControl, actions: List<Action>, deviceParameters: DeviceParameters): LayoutElement {
-        if (wearControl == WearControl.DISABLED) {
-            return Text.Builder()
-                .setText(resources.getString(R.string.wear_control_not_enabled))
-                .build()
-        } else if (wearControl == WearControl.NO_DATA) {
-            return Text.Builder()
-                .setText(resources.getString(R.string.wear_control_no_data))
-                .build()
+    private fun layout(wearControl: WearControl, actions: List<Action>, deviceParameters: DeviceParameters): LayoutElement =
+        materialScope(this, deviceParameters, allowDynamicTheme = true) {
+            val title = titleRes?.let { getString(it) }
+            primaryLayout(
+                titleSlot = title?.let { { text(it.layoutString) } },
+                mainSlot = {
+                    when {
+                        wearControl == WearControl.DISABLED -> message(getString(R.string.wear_control_not_enabled))
+                        wearControl == WearControl.NO_DATA  -> message(getString(R.string.wear_control_no_data))
+                        actions.isEmpty()                   -> message(getString(R.string.tile_no_config))
+                        else                                -> actionGrid(actions.take(4))
+                    }
+                }
+            )
         }
-        if (actions.isNotEmpty()) {
-            with(Column.Builder()) {
-                if (actions.size == 1 || actions.size == 3) {
-                    addContent(addRowSingle(actions[0], deviceParameters))
-                }
-                if (actions.size == 4 || actions.size == 2) {
-                    addContent(addRowDouble(actions[0], actions[1], deviceParameters))
-                }
-                if (actions.size == 3) {
-                    addContent(addRowDouble(actions[1], actions[2], deviceParameters))
-                }
-                if (actions.size == 4) {
-                    addContent(Spacer.Builder().setHeight(dp(SPACING_ACTIONS)).build())
-                    addContent(addRowDouble(actions[2], actions[3], deviceParameters))
-                }
-                return build()
-            }
+
+    private fun MaterialScope.message(message: String): LayoutElement =
+        text(message.layoutString, typography = Typography.BODY_MEDIUM, maxLines = 3)
+
+    private fun MaterialScope.actionGrid(actions: List<Action>): LayoutElement {
+        val rows = when (actions.size) {
+            1, 2 -> listOf(actions)
+            3    -> listOf(actions.subList(0, 1), actions.subList(1, 3))
+            else -> listOf(actions.subList(0, 2), actions.subList(2, 4))
         }
-        return Text.Builder()
-            .setText(resources.getString(R.string.tile_no_config))
+        if (rows.size == 1) return actionRow(rows[0])
+        return Column.Builder()
+            .setWidth(expand())
+            .setHeight(expand())
+            .addContent(actionRow(rows[0]))
+            .addContent(Spacer.Builder().setHeight(dp(SPACING_ROWS_DP)).build())
+            .addContent(actionRow(rows[1]))
             .build()
     }
 
-    private fun addRowSingle(action: Action, deviceParameters: DeviceParameters): LayoutElement =
-        Row.Builder()
-            .addContent(action(action, deviceParameters))
-            .build()
+    private fun MaterialScope.actionRow(actions: List<Action>): LayoutElement =
+        buttonGroup {
+            actions.forEach { action -> buttonGroupItem { actionButton(action) } }
+        }
 
-    private fun addRowDouble(action1: Action, action2: Action, deviceParameters: DeviceParameters): LayoutElement =
-        Row.Builder()
-            .addContent(action(action1, deviceParameters))
-            .addContent(Spacer.Builder().setWidth(dp(SPACING_ACTIONS)).build())
-            .addContent(action(action2, deviceParameters))
+    /**
+     * Material 3 button for a tile action: icon (tinted with the theme) above the label
+     * and optional secondary label, launching the action's activity on tap.
+     */
+    private fun MaterialScope.actionButton(action: Action): LayoutElement {
+        // Light secondary color with dark content, like the system tiles (e.g. Timer)
+        val colors = ButtonColors(
+            containerColor = colorScheme.secondary,
+            iconColor = colorScheme.onSecondary,
+            labelColor = colorScheme.onSecondary,
+            secondaryLabelColor = colorScheme.onSecondary
+        )
+        val clickable = Clickable.Builder()
+            .setId(action.buttonText ?: action.activityClass)
+            .setOnClick(doAction(action))
             .build()
+        return iconButton(
+            onClick = clickable,
+            iconContent = {
+                val content = Column.Builder()
+                    .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
+                    .addContent(icon(action.iconRes.toString(), width = dp(ICON_SIZE_DP), height = dp(ICON_SIZE_DP), tintColor = colors.iconColor))
+                action.buttonText?.let {
+                    content.addContent(text(it.layoutString, typography = Typography.LABEL_MEDIUM, color = colors.labelColor, maxLines = 1))
+                }
+                action.buttonTextSub?.let {
+                    content.addContent(text(it.layoutString, typography = Typography.LABEL_SMALL, color = colors.secondaryLabelColor, maxLines = 1))
+                }
+                content.build()
+            },
+            width = expand(),
+            height = expand(),
+            shape = shapes.large,
+            colors = colors,
+            contentPadding = Padding.Builder().setAll(dp(BUTTON_PADDING_DP)).build(),
+            modifier = LayoutModifier.contentDescription(listOfNotNull(action.buttonText, action.buttonTextSub).joinToString(" "))
+        )
+    }
 
     private fun doAction(action: Action): ActionBuilders.Action {
         val builder = ActionBuilders.AndroidActivity.Builder()
@@ -297,143 +332,6 @@ abstract class TileBase : TileService() {
         return ActionBuilders.LaunchAction.Builder()
             .setAndroidActivity(builder.build())
             .build()
-    }
-
-    /**
-     * Create an interactive circular button for a tile action.
-     *
-     * The button consists of:
-     * - Circular background with diameter calculated for optimal screen fit
-     * - Icon scaled to 40% of button diameter
-     * - Optional primary and secondary text labels
-     * - Click handler that launches the specified activity
-     * - Accessibility semantics for screen readers
-     *
-     * @param action Action definition with icon, text, and launch target
-     * @param deviceParameters Screen dimensions for sizing calculations
-     * @return Box element containing the styled, interactive button
-     */
-    private fun action(action: Action, deviceParameters: DeviceParameters): LayoutElement {
-        val circleDiameter = circleDiameter(deviceParameters)
-        val text = action.buttonText
-        val textSub = action.buttonTextSub
-        return Box.Builder()
-            .setWidth(dp(circleDiameter))
-            .setHeight(dp(circleDiameter))
-            .setModifiers(
-                Modifiers.Builder()
-                    .setBackground(
-                        Background.Builder()
-                            .setColor(argb(ContextCompat.getColor(baseContext, BUTTON_COLOR)))
-                            .setCorner(Corner.Builder().setRadius(dp(circleDiameter / 2)).build())
-                            .build()
-                    )
-                    .setSemantics(
-                        Semantics.Builder()
-                            .setContentDescription("$text $textSub")
-                            .build()
-                    )
-                    .setClickable(
-                        Clickable.Builder()
-                            .setOnClick(doAction(action))
-                            .build()
-                    )
-                    .build()
-            )
-            .addContent(addTextContent(action, deviceParameters))
-            .build()
-    }
-
-    private fun addTextContent(action: Action, deviceParameters: DeviceParameters): LayoutElement {
-        val circleDiameter = circleDiameter(deviceParameters)
-        val iconSize = dp(circleDiameter * ICON_SIZE_FRACTION)
-        val text = action.buttonText
-        val textSub = action.buttonTextSub
-        val image = Image.Builder()
-            .setWidth(iconSize)
-            .setHeight(iconSize)
-            .setResourceId(action.iconRes.toString())
-            .build()
-
-        if (text == null && textSub == null) {
-            return image
-        }
-
-        val col = Column.Builder()
-            .addContent(image)
-        if (text != null) {
-            col.addContent(
-                Text.Builder()
-                    .setText(text)
-                    .setFontStyle(
-                        FontStyle.Builder()
-                            .setWeight(FONT_WEIGHT_BOLD)
-                            .setColor(argb(ContextCompat.getColor(baseContext, R.color.white)))
-                            .setSize(buttonTextSize(deviceParameters, text))
-                            .build()
-                    )
-                    .build()
-            )
-        }
-        if (textSub != null) {
-            col.addContent(
-                Text.Builder()
-                    .setText(textSub)
-                    .setFontStyle(
-                        FontStyle.Builder()
-                            .setColor(argb(ContextCompat.getColor(baseContext, R.color.white)))
-                            .setSize(buttonTextSize(deviceParameters, textSub))
-                            .build()
-                    )
-                    .build()
-            )
-        }
-
-        return col.build()
-    }
-
-    /**
-     * Calculate optimal circular button diameter for the device screen.
-     *
-     * Geometry:
-     * - Round screens: Use inscribed square method
-     *   - Diameter = (√2 - 1) × screen_height
-     *   - This fits buttons in corners of the inscribed square
-     * - Square screens: Use half-height
-     *   - Diameter = 0.5 × screen_height
-     *   - Allows 2×2 grid to fit comfortably
-     *
-     * Both formulas subtract spacing to prevent edge clipping.
-     *
-     * @param deviceParameters Screen dimensions and shape
-     * @return Button diameter in DP
-     */
-    private fun circleDiameter(deviceParameters: DeviceParameters) = when (deviceParameters.screenShape) {
-        SCREEN_SHAPE_ROUND -> ((sqrt(2f) - 1) * deviceParameters.screenHeightDp) - (2 * SPACING_ACTIONS)
-        else               -> 0.5f * deviceParameters.screenHeightDp - SPACING_ACTIONS
-    }
-
-    private fun buttonTextSize(deviceParameters: DeviceParameters, text: String): SpProp {
-        if (text.length > 6) {
-            return sp(if (isLargeScreen(deviceParameters)) 14f else 12f)
-        }
-        return sp(if (isLargeScreen(deviceParameters)) 16f else 14f)
-    }
-
-    /**
-     * Determine if device has a large screen (≥210dp width).
-     *
-     * Used to adjust text sizes for better readability:
-     * - Large screens: Larger text sizes (14-16sp)
-     * - Small screens: Smaller text sizes (12-14sp)
-     *
-     * Threshold based on typical Wear OS device classifications.
-     *
-     * @param deviceParameters Screen dimensions
-     * @return true if screen width ≥ 210dp
-     */
-    private fun isLargeScreen(deviceParameters: DeviceParameters): Boolean {
-        return deviceParameters.screenWidthDp >= LARGE_SCREEN_WIDTH_DP
     }
 
     private fun getWearControl(): WearControl {

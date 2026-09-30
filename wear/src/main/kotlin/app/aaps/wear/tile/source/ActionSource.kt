@@ -26,7 +26,7 @@ class ActionSource @Inject constructor(context: Context, sp: SP, aapsLogger: AAP
             StaticAction(
                 settingName = "wizard",
                 buttonText = resources.getString(R.string.menu_wizard_short),
-                iconRes = R.drawable.ic_calculator,
+                iconRes = R.drawable.ic_calculator_tile,
                 activityClass = WizardActivity::class.java.name,
             ),
             StaticAction(

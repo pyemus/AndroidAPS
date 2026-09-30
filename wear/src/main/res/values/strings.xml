@@ -6,6 +6,11 @@
     <string name="label_watchface_digital_style">AAPS(DigitalStyle)</string>
     <string name="label_watchface_custom">AAPS(Custom)</string>
     <string name="label_actions_tile">AAPS(Actions)</string>
+    <string name="tile_title_actions">Actions</string>
+    <string name="tile_title_temp_target">Temp target</string>
+    <string name="tile_title_quick_wizard">Quick wizard</string>
+    <string name="tile_title_user_action">User action</string>
+    <string name="tile_title_loop_state">Loop</string>
     <string name="label_temp_target_tile">AAPS(Temp Target)</string>
     <string name="label_quick_wizard_tile">AAPS(Quick Wizard)</string>
     <string name="label_user_action_tile">AAPS(User Action)</string>

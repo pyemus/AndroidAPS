@@ -1,5 +1,6 @@
 package app.aaps.wear.tile
 
+import app.aaps.wear.R
 import app.aaps.wear.tile.source.LoopStateSource
 import dagger.android.AndroidInjection
 import javax.inject.Inject
@@ -15,6 +16,7 @@ class LoopStateTileService : TileBase() {
     }
 
     override val resourceVersion = "LoopStateTileService"
+    override val titleRes = R.string.tile_title_loop_state
     override val source get() = loopStateSource
 }
 

@@ -1,5 +1,6 @@
 package app.aaps.wear.tile
 
+import app.aaps.wear.R
 import app.aaps.wear.tile.source.QuickWizardSource
 import dagger.android.AndroidInjection
 import javax.inject.Inject
@@ -15,5 +16,6 @@ class QuickWizardTileService : TileBase() {
     }
 
     override val resourceVersion = "QuickWizardTileService"
+    override val titleRes = R.string.tile_title_quick_wizard
     override val source get() = quickWizardSource
 }

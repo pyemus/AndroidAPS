@@ -1,5 +1,6 @@
 package app.aaps.wear.tile
 
+import app.aaps.wear.R
 import app.aaps.wear.tile.source.ActionSource
 import dagger.android.AndroidInjection
 import javax.inject.Inject
@@ -15,5 +16,6 @@ class ActionsTileService : TileBase() {
     }
 
     override val resourceVersion = "ActionsTileService"
+    override val titleRes = R.string.tile_title_actions
     override val source get() = actionSource
 }

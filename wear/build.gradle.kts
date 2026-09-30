@@ -151,6 +151,7 @@ dependencies {
     implementation(libs.androidx.wear.tiles)
     implementation(libs.androidx.wear.protolayout)
     implementation(libs.androidx.wear.protolayout.expression)
+    implementation(libs.androidx.wear.protolayout.material3)
     implementation(libs.androidx.wear.watchface)
     implementation(libs.androidx.wear.watchface.complications.data)
     implementation(libs.androidx.wear.watchface.complications.datasource)
