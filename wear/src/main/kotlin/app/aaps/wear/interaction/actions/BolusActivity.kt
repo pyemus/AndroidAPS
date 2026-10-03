@@ -77,7 +77,6 @@ class BolusActivity : ViewSelectorActivity() {
                         view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
 
                         rxBus.send(EventWearToMobile(ActionBolusPreCheck(SafeParse.stringToDouble(editInsulin?.editText?.text.toString()), 0)))
-                        showToast(this@BolusActivity, R.string.action_bolus_confirmation)
                         finishAffinity()
                     }
                     layoutParams = ViewGroup.LayoutParams(

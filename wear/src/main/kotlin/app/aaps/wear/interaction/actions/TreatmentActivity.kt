@@ -102,7 +102,6 @@ class TreatmentActivity : ViewSelectorActivity() {
 
                         val bolus = ActionBolusPreCheck(stringToDouble(editInsulin?.editText?.text.toString()), stringToInt(editCarbs?.editText?.text.toString()))
                         rxBus.send(EventWearToMobile(bolus))
-                        showToast(this@TreatmentActivity, R.string.action_treatment_confirmation)
                         finishAffinity()
                     }
                     layoutParams = ViewGroup.LayoutParams(

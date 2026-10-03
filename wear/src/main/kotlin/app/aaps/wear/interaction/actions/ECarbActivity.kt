@@ -120,7 +120,6 @@ class ECarbActivity : ViewSelectorActivity() {
                             stringToInt(editDuration?.editText?.text.toString())
                         )
                         rxBus.send(EventWearToMobile(bolus))
-                        showToast(this@ECarbActivity, R.string.action_ecarb_confirmation)
                         finishAffinity()
                     }
                     layoutParams = ViewGroup.LayoutParams(

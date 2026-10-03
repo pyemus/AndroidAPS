@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Handler
 import android.os.HandlerThread
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import app.aaps.core.interfaces.logging.AAPSLogger
@@ -76,7 +77,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
             .toObservable(EventWearToMobile::class.java)
             .observeOn(aapsSchedulers.io)
             .subscribe {
-                sendMessage(rxPath, it.payload.serialize())
+                sendMessage(rxPath, it.payload.serialize(), notifyOnFailure = it.payload.isUserAction())
             }
         disposable += rxBus
             .toObservable(EventWearDataToMobile::class.java)
@@ -146,7 +147,9 @@ class DataLayerListenerServiceWear : WearableListenerService() {
                 rxBus.send(EventWearToMobile(EventData.CancelBolus(System.currentTimeMillis())))
             }
 
-            INTENT_WEAR_TO_MOBILE      -> sendMessage(rxPath, intent.extras?.getString(KEY_ACTION_DATA))
+            INTENT_WEAR_TO_MOBILE      -> intent.extras?.getString(KEY_ACTION_DATA).let { data ->
+                sendMessage(rxPath, data, notifyOnFailure = data != null && EventData.deserialize(data).isUserAction())
+            }
             INTENT_CANCEL_NOTIFICATION -> (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(CHANGE_NOTIF_ID)
         }
         return START_STICKY
@@ -245,7 +248,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
         }
     }
 
-    private fun sendMessage(path: String, data: String?) {
+    private fun sendMessage(path: String, data: String?, notifyOnFailure: Boolean = false) {
         transcriptionNodeId?.also { nodeId ->
             aapsLogger.debug(LTag.WEAR, "sendMessage: $path $data")
             messageClient
@@ -253,9 +256,30 @@ class DataLayerListenerServiceWear : WearableListenerService() {
                     addOnSuccessListener { }
                     addOnFailureListener {
                         aapsLogger.debug(LTag.WEAR, "sendMessage:  $path failure $it")
+                        if (notifyOnFailure) showNotSentToast()
                     }
                 }
-        } ?: aapsLogger.debug(LTag.WEAR, "sendMessage: Ignoring message. No node selected.")
+        } ?: run {
+            aapsLogger.debug(LTag.WEAR, "sendMessage: Ignoring message. No node selected.")
+            if (notifyOnFailure) showNotSentToast()
+        }
+    }
+
+    // Action screens close without a "Requested" toast, so tell the user when the phone never got the request
+    private fun showNotSentToast() {
+        scope.launch { Toast.makeText(this@DataLayerListenerServiceWear, R.string.action_not_sent, Toast.LENGTH_LONG).show() }
+    }
+
+    private fun EventData.isUserAction(): Boolean = when (this) {
+        is EventData.ActionBolusPreCheck, is EventData.ActionECarbsPreCheck, is EventData.ActionFillPreCheck,
+        is EventData.ActionFillPresetPreCheck, is EventData.ActionProfileSwitchPreCheck, is EventData.ActionWizardPreCheck,
+        is EventData.ActionQuickWizardPreCheck, is EventData.ActionUserActionPreCheck, is EventData.ActionTempTargetPreCheck,
+        is EventData.ActionBolusConfirmed, is EventData.ActionECarbsConfirmed, is EventData.ActionFillConfirmed,
+        is EventData.ActionProfileSwitchConfirmed, is EventData.ActionWizardConfirmed, is EventData.ActionUserActionConfirmed,
+        is EventData.ActionTempTargetConfirmed, is EventData.LoopStateSelected, is EventData.LoopStateConfirmed,
+        is EventData.CancelBolus, is EventData.SnoozeAlert -> true
+
+        else -> false
     }
 
     private fun sendMessage(path: String, data: ByteArray) {

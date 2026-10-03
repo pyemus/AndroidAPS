@@ -105,6 +105,7 @@
     <string name="action_fill_confirmation">Fill Requested</string>
     <string name="action_ecarb_confirmation">Carbs Requested</string>
     <string name="action_profile_switch_confirmation">Profile Switch Requested</string>
+    <string name="action_not_sent">Not sent: phone not reachable</string>
     <string name="action_target_unit" comment="In temp target menu, single target value">Target\n[%s]</string>
     <string name="action_low_unit" comment="In temp target menu, lower value from range">Low\n[%s]</string>
     <string name="action_high_unit" comment="In temp target menu, higher value from range">High\n[%s]</string>

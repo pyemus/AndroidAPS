@@ -76,7 +76,6 @@ class CarbActivity : ViewSelectorActivity() {
                         // With start time 0 and duration 0
                         val bolus = ActionECarbsPreCheck(SafeParse.stringToInt(editCarbs?.editText?.text.toString()), 0, 0)
                         rxBus.send(EventWearToMobile(bolus))
-                        showToast(this@CarbActivity, R.string.action_ecarb_confirmation)
                         finishAffinity()
                     }
                     layoutParams = ViewGroup.LayoutParams(

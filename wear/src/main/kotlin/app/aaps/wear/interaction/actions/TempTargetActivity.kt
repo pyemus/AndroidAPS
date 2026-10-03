@@ -130,7 +130,6 @@ class TempTargetActivity : ViewSelectorActivity() {
                             if (isSingleTarget) SafeParse.stringToDouble(lowRange?.editText?.text.toString()) else SafeParse.stringToDouble(highRange?.editText?.text.toString())
                         )
                         rxBus.send(EventWearToMobile(action))
-                        showToast(this@TempTargetActivity, R.string.action_tempt_confirmation)
                         finishAffinity()
                     }
                     layoutParams = ViewGroup.LayoutParams(
