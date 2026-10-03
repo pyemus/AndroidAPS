@@ -127,7 +127,6 @@ class WizardActivity : ViewSelectorActivity() {
                         val carbs = SafeParse.stringToInt(editCarbs?.editText?.text.toString())
                         rxBus.send(EventWearToMobile(ActionWizardPreCheck(carbs, percentage)))
 
-                        showToast(this@WizardActivity, R.string.action_wizard_confirmation)
                         finishAffinity()
                     }
 
