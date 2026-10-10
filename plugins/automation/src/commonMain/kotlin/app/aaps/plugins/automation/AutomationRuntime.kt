@@ -82,6 +82,8 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -336,7 +338,13 @@ class AutomationRuntime(
         // Default, not IO: IO does not exist in common code, and the work here does not need it - the
         // only write is `storeToSP`, a JSON serialize plus a preference put, debounced to 300 ms. The
         // same shape every other multiplatform plugin uses.
-        val newScope = externalScope ?: CoroutineScope(Dispatchers.Default + SupervisorJob())
+        // The handler keeps a failure in one of the jobs below (a persist, a tile refresh, a reload) from
+        // reaching the thread's uncaught handler, which would end the process.
+        val newScope = externalScope ?: CoroutineScope(
+            Dispatchers.Default + SupervisorJob() + CoroutineExceptionHandler { _, e ->
+                aapsLogger.error(LTag.AUTOMATION, "Automation runtime: a background job failed", e)
+            }
+        )
         scope = newScope
 
         // Persist on EDITS only (never on a load — that's the whole point of the verbatim model).
@@ -532,7 +540,18 @@ class AutomationRuntime(
     }
 
     internal suspend fun processActions() {
-        processActionsMutex.withLock { processActionsLocked() }
+        processActionsMutex.withLock {
+            try {
+                processActionsLocked()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The timer loop and the event collectors call this. Without the catch one failing run
+                // would end the timer for good, or kill the process. Each rule has its own guard in
+                // processEvent, so this only sees failures of the checks around the rules.
+                aapsLogger.error(LTag.AUTOMATION, "Automation run failed", e)
+            }
+        }
     }
 
     private suspend fun processActionsLocked() {
@@ -626,11 +645,32 @@ class AutomationRuntime(
             return
         }
 
-        if (event.canRun() && event.preconditionCanRun()) {
+        // A rule that throws must not take the runtime down with it. In 3.4.x such an exception was
+        // logged by the Rx subscriber; now it would end the run and, with nothing above it, the process.
+        // A trigger that throws counts as "not due" and gets lastRun stamped, so it is not evaluated
+        // again on every tick but only after its repeat interval. An action that throws is logged like
+        // a failed action, and the next action still runs.
+        val due = try {
+            event.canRun() && event.preconditionCanRun()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logFailure(event, null, e)
+            event.lastRun = dateUtil.now()
+            return
+        }
+        if (due) {
             val actions = event.actions
             for (action in actions) {
                 action.title = event.title
-                val result = action.doAction()
+                val result = try {
+                    action.doAction()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logFailure(event, action, e)
+                    continue
+                }
                 val entry = buildAnnotatedString {
                     append(dateUtil.timeString(dateUtil.now()))
                     append(" ")
@@ -649,6 +689,21 @@ class AutomationRuntime(
             event.lastRun = dateUtil.now()
             if (event.autoRemove) remove(event)
         }
+    }
+
+    private fun logFailure(event: AutomationEventObject, action: Action?, e: Exception) {
+        val entry = buildAnnotatedString {
+            append(dateUtil.timeString(dateUtil.now()))
+            append(" ▼ ")
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${event.title}:") }
+            append(" ")
+            append(action?.shortDescription() ?: runCatching { event.trigger.friendlyDescription() }.getOrDefault(""))
+            append(": ")
+            append(e.message ?: e::class.simpleName ?: "")
+        }
+        executionLog.add(entry)
+        aapsLogger.error(LTag.AUTOMATION, "Failed: ${entry.text}", e)
+        rxBus.send(EventAutomationUpdateGui())
     }
 
     fun add(event: AutomationEventObject) {

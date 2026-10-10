@@ -18,6 +18,7 @@ import app.aaps.plugins.automation.actions.Action
 import app.aaps.plugins.automation.actions.ActionFactory
 import app.aaps.plugins.automation.elements.ComparatorConnect
 import app.aaps.plugins.automation.triggers.TriggerBTDevice
+import app.aaps.plugins.automation.triggers.Trigger
 import app.aaps.plugins.automation.triggers.TriggerConnector
 import app.aaps.plugins.automation.triggers.TriggerDeps
 import app.aaps.plugins.automation.triggers.TriggerFactory
@@ -176,6 +177,42 @@ class AutomationRuntimeProcessingTest : TestBaseWithProfile() {
         withStartedRuntime {
             verify(constraintChecker, never()).isAutomationEnabled()
         }
+    }
+
+    @Test
+    fun `a throwing action is logged and the rule still finishes`() = runTest {
+        var secondRan = 0
+        val failing = countingAction("failing action") { throw IllegalStateException("boom") }
+        val second = countingAction("second action") { secondRan++ }
+        runtime.add(eventFactory.newEvent().apply {
+            title = "due now"
+            isEnabled = true
+            trigger = TriggerConnector(triggerDeps)
+            actions.add(failing)
+            actions.add(second)
+        })
+        val event = runtime.at(0)
+
+        runtime.processActions() // must not throw
+
+        assertThat(secondRan).isEqualTo(1)
+        assertThat(event.lastRun).isGreaterThan(0L)
+        assertThat(runtime.executionLog.any { it.text.contains("boom") }).isTrue()
+    }
+
+    @Test
+    fun `a throwing trigger is logged and the rule waits for its repeat interval`() = runTest {
+        var ran = 0
+        val trigger = mock<Trigger>()
+        trigger.stub { onBlocking { shouldRun() } doSuspendableAnswer { throw IllegalStateException("broken trigger") } }
+        addRule("broken", TriggerConnector(triggerDeps).apply { list.add(trigger) }, countingAction("action") { ran++ })
+        val event = runtime.at(0)
+
+        runtime.processActions() // must not throw
+
+        assertThat(ran).isEqualTo(0)
+        assertThat(event.lastRun).isGreaterThan(0L)
+        assertThat(runtime.executionLog.any { it.text.contains("broken trigger") }).isTrue()
     }
 
     @Test

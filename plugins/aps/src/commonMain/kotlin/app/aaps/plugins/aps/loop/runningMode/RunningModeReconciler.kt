@@ -29,8 +29,11 @@ import app.aaps.plugins.aps.loop.runningMode.RunningModeReconciler.Companion.REN
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -97,10 +100,29 @@ class RunningModeReconciler(
             return
         }
         observerJob = appScope.launch {
-            mutex.withLock { reconcileStartup() }
+            // Each step is guarded on its own: this observer is the only thing that applies a mode change
+            // to the pump, so one failed step must not end it for the rest of the process. The baseline
+            // is left as it was on failure, so the next change is decided from the right previous mode.
+            keepObserverAlive("startup reconcile") { mutex.withLock { reconcileStartup() } }
             persistenceLayer.observeChanges(RM::class).collect { _ ->
-                mutex.withLock { onAnyChange() }
+                keepObserverAlive("mode change") { mutex.withLock { onAnyChange() } }
             }
+        }
+    }
+
+    /**
+     * Runs [block] and logs a failure instead of letting it end the observer. A CancellationException
+     * is passed on only when the observer itself is cancelled; one thrown by a cancelled pump command
+     * (the queue is held during a settings import, for example) must not stop the observer either.
+     */
+    private suspend fun keepObserverAlive(step: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw e
+            aapsLogger.error(LTag.APS, "RunningModeReconciler: $step was cancelled from below, observer stays alive", e)
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.APS, "RunningModeReconciler: $step failed, observer stays alive", e)
         }
     }
 

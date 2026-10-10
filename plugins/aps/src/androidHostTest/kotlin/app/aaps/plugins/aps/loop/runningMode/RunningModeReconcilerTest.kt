@@ -28,6 +28,8 @@ import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -208,6 +210,35 @@ class RunningModeReconcilerTest : TestBaseWithProfile() {
         reconciler.start()
 
         whenever(persistenceLayer.getRunningModeActiveAt(anyLong())).thenReturn(disconnect)
+        flow.emit(listOf(disconnect))
+
+        verify(commandQueue).tempBasalAbsolute(
+            eq(0.0), eq(60), eq(true), any(),
+            eq(PumpSync.TemporaryBasalType.EMULATED_PUMP_SUSPEND)
+        )
+    }
+
+    @Test
+    fun `a failing change does not stop the observer`() = runTest {
+        testPumpPlugin.pumpDescription = PumpDescription().apply {
+            tempBasalStyle = PumpDescription.ABSOLUTE
+        }
+        whenever(profileFunction.getProfile()).thenReturn(effectiveProfile)
+        val workingModeRm = workingMode(RM.Mode.CLOSED_LOOP)
+        val disconnect = temporaryMode(RM.Mode.DISCONNECTED_PUMP, timestamp = now, durationMs = T.mins(30).msecs())
+        val flow = MutableSharedFlow<List<RM>>(replay = 0)
+        whenever(persistenceLayer.observeChanges(eq(RM::class))).thenReturn(flow)
+        whenever(persistenceLayer.getRunningModeActiveAt(anyLong())).thenReturn(workingModeRm)
+        whenever(processedTbrEbData.getTempBasalIncludingConvertedExtended(anyLong())).thenReturn(null)
+        whenever(persistenceLayer.getExtendedBolusActiveAt(anyLong())).thenReturn(null)
+        reconciler.start()
+
+        // The first change fails while it is being read ... (doThrow/doReturn: re-stubbing with
+        // whenever(mock.call()) would run the throwing stub inside the test itself)
+        doThrow(IllegalStateException("db closed")).whenever(persistenceLayer).getRunningModeActiveAt(anyLong())
+        flow.emit(listOf(disconnect))
+        // ... and the next one is still handled by the same observer.
+        doReturn(disconnect).whenever(persistenceLayer).getRunningModeActiveAt(anyLong())
         flow.emit(listOf(disconnect))
 
         verify(commandQueue).tempBasalAbsolute(
