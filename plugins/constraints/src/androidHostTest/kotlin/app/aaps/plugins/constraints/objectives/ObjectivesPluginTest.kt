@@ -167,12 +167,12 @@ class ObjectivesPluginTest : TestBaseWithProfile() {
         assertThat(c.getReasons()).isEmpty()
     }
 
-    @Test fun skipObjectivesShouldNotLimitConcentration() {
+    @Test fun skipObjectivesStillLimitsConcentration() {
         whenever(config.isEnabled(ExternalOptions.SKIP_OBJECTIVES)).thenReturn(true)
         objectivesPlugin.objectives[Objectives.EXAM_OBJECTIVE].accomplishedOn = 0
         val c = objectivesPlugin.isConcentrationEnabled(ConstraintObject(true, aapsLogger))
-        assertThat(c.value()).isTrue()
-        assertThat(c.getReasons()).isEmpty()
+        assertThat(c.value()).isFalse()
+        assertThat(c.getReasons()).contains("Objective 3 not finished")
     }
 
     /**

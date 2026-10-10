@@ -125,6 +125,7 @@
     <string name="action">Action:</string>
     <string name="taskname">Task name</string>
     <string name="automation_min_repeat_minutes">Repeat at most every [min]</string>
+    <string name="automation_min_repeat_minutes_range">Between 5 and 1440 minutes. Smaller values run every 5 minutes.</string>
     <string name="edit_short">EDIT</string>
     <string name="preconditions">Preconditions:</string>
     <string name="user_action">User action</string>

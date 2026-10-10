@@ -289,6 +289,8 @@ class DataLayerListenerServiceWear : WearableListenerService() {
         is EventData.ActionBolusConfirmed, is EventData.ActionECarbsConfirmed, is EventData.ActionFillConfirmed,
         is EventData.ActionProfileSwitchConfirmed, is EventData.ActionWizardConfirmed, is EventData.ActionUserActionConfirmed,
         is EventData.ActionTempTargetConfirmed, is EventData.RunningModeSelected, is EventData.RunningModeConfirmed,
+        is EventData.ActionScenePreCheck, is EventData.ActionSceneConfirmed, is EventData.ActionSceneStop,
+        is EventData.ActionSceneStopPreCheck, is EventData.ActionSceneStopConfirmed, is EventData.OpenLoopRequestConfirmed,
         is EventData.CancelBolus, is EventData.SnoozeAlert -> true
 
         else -> false

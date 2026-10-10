@@ -260,6 +260,7 @@ class AutomationStateHolder(
         _editState.value = AutomationEditUiState(
             title = e.title,
             minRepeatMinutes = minRepeatText,
+            minRepeatError = minRepeatText.toIntOrNull()?.let { it in AutomationEventObject.MIN_REPEAT_MINUTES..AutomationEventObject.MAX_REPEAT_MINUTES } != true,
             userAction = e.userAction,
             enabled = e.isEnabled,
             readOnly = e.readOnly,

@@ -98,7 +98,7 @@ class DataHandlerWear(
 
     // Coroutine scope for DataStore operations
     private val dataStoreScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var graphUpdateJob: Job? = null
+    @Volatile private var graphUpdateJob: Job? = null
     private val graphUpdateDebounceMs = 1500L
 
 

@@ -155,8 +155,8 @@ class ObjectivesPlugin(
     }
 
     override fun isConcentrationEnabled(value: Constraint<Boolean>): Constraint<Boolean> {
-        // Objectives do not restrict anything in this build
-        if (skipObjectives) return value
+        // Not skipped with SKIP_OBJECTIVES: a wrong insulin concentration changes every dose, so the
+        // exam stays a requirement for U200/U500
         if (objectives.isEmpty()) return value
         if (!objectives[EXAM_OBJECTIVE].isAccomplished) {
             value.set(false, rh.gs(ConstraintsStrings.objectivenotfinished, EXAM_OBJECTIVE + 1), this)

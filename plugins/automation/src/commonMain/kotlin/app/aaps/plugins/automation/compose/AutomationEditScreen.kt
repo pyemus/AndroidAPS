@@ -141,6 +141,10 @@ private fun BasicsSection(
             label = { Text(stringResource(AutomationStrings.automation_min_repeat_minutes)) },
             singleLine = true,
             enabled = !state.readOnly,
+            isError = state.minRepeatError,
+            supportingText = if (state.minRepeatError) {
+                { Text(stringResource(AutomationStrings.automation_min_repeat_minutes_range)) }
+            } else null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
