@@ -14,7 +14,7 @@ import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.rx.weardata.EventData
-import dagger.android.AndroidInjection
+import dev.zacsweers.metro.HasMemberInjections
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -26,13 +26,9 @@ import java.util.concurrent.TimeUnit
  * monochromatic image = trend arrow (can be tinted by the face).
  * SHORT_TEXT: BG + arrow, title = reading age.
  */
+@HasMemberInjections
 class BgRangedComplication : ModernBaseComplicationProviderService() {
 
-    // Not derived from DaggerService, do injection here
-    override fun onCreate() {
-        AndroidInjection.inject(this)
-        super.onCreate()
-    }
 
     override fun buildComplicationData(
         type: ComplicationType,

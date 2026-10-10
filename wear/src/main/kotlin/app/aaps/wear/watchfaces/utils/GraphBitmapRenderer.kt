@@ -16,18 +16,20 @@ import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.wear.R
 import app.aaps.wear.complications.WffEncoding
 import app.aaps.wear.data.ComplicationData
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import lecho.lib.hellocharts.view.LineChartView
 import java.io.ByteArrayOutputStream
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Renders the BG graph (same content as the watch face chart) to a PNG for the graph photo complication.
  *
  * Uses an offscreen [LineChartView] which must be created and drawn on the main thread.
  */
-@Singleton
-class GraphBitmapRenderer @Inject constructor(
+@SingleIn(AppScope::class)
+@Inject
+class GraphBitmapRenderer(
     private val context: Context,
     private val sp: SP,
     private val dateUtil: DateUtil,

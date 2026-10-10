@@ -8,23 +8,19 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.sharedPreferences.SP
 import app.aaps.wear.R
-import dagger.android.AndroidInjection
-import javax.inject.Inject
+import dev.zacsweers.metro.HasMemberInjections
+import dev.zacsweers.metro.Inject
 
 /**
  * Delta complication
  *
  * SHORT_TEXT: text = delta, title = average delta (detailed values if "show detailed delta" is enabled)
  */
+@HasMemberInjections
 class DeltaComplication : ModernBaseComplicationProviderService() {
 
     @Inject lateinit var sp: SP
 
-    // Not derived from DaggerService, do injection here
-    override fun onCreate() {
-        AndroidInjection.inject(this)
-        super.onCreate()
-    }
 
     override fun buildComplicationData(
         type: ComplicationType,

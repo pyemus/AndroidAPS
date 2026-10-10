@@ -11,7 +11,7 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import app.aaps.core.interfaces.logging.LTag
-import dagger.android.AndroidInjection
+import dev.zacsweers.metro.HasMemberInjections
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -22,13 +22,9 @@ import java.util.concurrent.TimeUnit
  * value >= max means the loop is stale (red on the WFF face). Text = auto-updating minutes.
  * SHORT_TEXT: auto-updating minutes since last loop run.
  */
+@HasMemberInjections
 class LoopStatusComplication : ModernBaseComplicationProviderService() {
 
-    // Not derived from DaggerService, do injection here
-    override fun onCreate() {
-        AndroidInjection.inject(this)
-        super.onCreate()
-    }
 
     override fun buildComplicationData(
         type: ComplicationType,

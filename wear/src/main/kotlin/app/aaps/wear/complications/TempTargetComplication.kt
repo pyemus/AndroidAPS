@@ -7,7 +7,7 @@ import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import app.aaps.core.interfaces.logging.LTag
-import dagger.android.AndroidInjection
+import dev.zacsweers.metro.HasMemberInjections
 
 /**
  * Temp target complication
@@ -16,13 +16,9 @@ import dagger.android.AndroidInjection
  * text = current target.
  * SHORT_TEXT: current target.
  */
+@HasMemberInjections
 class TempTargetComplication : ModernBaseComplicationProviderService() {
 
-    // Not derived from DaggerService, do injection here
-    override fun onCreate() {
-        AndroidInjection.inject(this)
-        super.onCreate()
-    }
 
     override fun buildComplicationData(
         type: ComplicationType,

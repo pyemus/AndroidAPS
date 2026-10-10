@@ -7,6 +7,7 @@ plugins {
 }
 
 android {
+    enableKotlin = false
     namespace = "info.nightscout.androidaps.watchface"
     compileSdk = Versions.compileSdk
 
@@ -47,11 +48,25 @@ android {
         }
         release {
             isMinifyEnabled = true
+            // The watch face IS resources - never shrink them (see :wear:watchfacepush)
+            isShrinkResources = false
             signingConfigs.getByName("fullRelease").takeIf { it.storeFile != null }?.let { signingConfig = it }
         }
     }
 
     buildFeatures {
         buildConfig = false
+    }
+    lint {
+        // Code-free resource-only APK - nothing to lint
+        checkReleaseBuilds = false
+    }
+}
+
+// Same as :wear:watchfacepush - keep this APK code-free by dropping the stdlib the root build
+// wires into every project
+configurations.configureEach {
+    if (name.endsWith("RuntimeClasspath") || name.endsWith("CompileClasspath")) {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
 }

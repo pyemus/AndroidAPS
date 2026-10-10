@@ -9,8 +9,8 @@ import androidx.wear.watchface.complications.data.PlainComplicationText
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.wear.R
 import app.aaps.wear.watchfaces.utils.GraphBitmapRenderer
-import dagger.android.AndroidInjection
-import javax.inject.Inject
+import dev.zacsweers.metro.HasMemberInjections
+import dev.zacsweers.metro.Inject
 
 /**
  * BG graph complication (PHOTO_IMAGE) for the WFF watch face
@@ -18,15 +18,11 @@ import javax.inject.Inject
  * Renders BG history, predictions, basal and treatments to an image.
  * Updated by DataHandlerWear when new BG / graph / treatment data arrives.
  */
+@HasMemberInjections
 class GraphComplication : ModernBaseComplicationProviderService() {
 
     @Inject lateinit var graphBitmapRenderer: GraphBitmapRenderer
 
-    // Not derived from DaggerService, do injection here
-    override fun onCreate() {
-        AndroidInjection.inject(this)
-        super.onCreate()
-    }
 
     override fun buildComplicationData(
         type: ComplicationType,
