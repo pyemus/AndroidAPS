@@ -175,6 +175,20 @@ class ObjectivesPluginTest : TestBaseWithProfile() {
         assertThat(c.getReasons()).contains("Objective 3 not finished")
     }
 
+    @Test fun skipObjectivesMarksAllAccomplishedOnStart() = runTest {
+        whenever(config.isEnabled(ExternalOptions.SKIP_OBJECTIVES)).thenReturn(true)
+        objectivesPlugin.objectives.forEach { it.startedOn = 0; it.accomplishedOn = 0 }
+        objectivesPlugin.onStart()
+        assertThat(objectivesPlugin.accomplishedCount).isEqualTo(objectivesPlugin.size)
+        assertThat(objectivesPlugin.objectives.all { it.isStarted && it.isAccomplished }).isTrue()
+    }
+
+    @Test fun onStartLeavesObjectivesAloneWithoutSkip() = runTest {
+        objectivesPlugin.objectives[Objectives.EXAM_OBJECTIVE].accomplishedOn = 0
+        objectivesPlugin.onStart()
+        assertThat(objectivesPlugin.objectives[Objectives.EXAM_OBJECTIVE].isAccomplished).isFalse()
+    }
+
     /**
      * The setup wizard gates its non-skippable Objectives screen on this, so it has
      * to report started. Stored progress itself is untouched -- the fragment reads

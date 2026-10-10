@@ -15,6 +15,7 @@ import app.aaps.core.interfaces.constraints.Objectives.Companion.SMB_OBJECTIVE
 import app.aaps.core.interfaces.constraints.PluginConstraints
 import app.aaps.core.interfaces.di.APS
 import app.aaps.core.interfaces.logging.AAPSLogger
+import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.plugin.EnforcedState
 import app.aaps.core.interfaces.plugin.PluginBase
@@ -66,6 +67,26 @@ class ObjectivesPlugin(
     ownPreferences = ObjectivesBooleanComposedKey.entries + ObjectivesLongComposedKey.entries,
     aapsLogger, rh, preferences, notificationManager
 ), PluginConstraints, Objectives {
+
+    override suspend fun onStart() {
+        super.onStart()
+        // Objectives are skipped in this build (SKIP_OBJECTIVES). Mark them all accomplished as well, so
+        // the Objectives screen and the Overview badge show them as done, and nothing that reads
+        // accomplishment (the insulin concentration exam gate) stays closed.
+        if (skipObjectives) markAllAccomplished()
+    }
+
+    private fun markAllAccomplished() {
+        objectives.forEachIndexed { index, objective ->
+            // isAccomplished needs a time in the past, so use one second ago
+            val past = objective.dateUtil.now() - 1000
+            if (!objective.isStarted) objective.startedOn = past
+            if (!objective.isAccomplished) {
+                objective.accomplishedOn = past
+                aapsLogger.info(LTag.CORE, "Objective ${index + 1} marked accomplished because objectives are skipped")
+            }
+        }
+    }
 
     fun reset() {
         for (objective in objectives) {
