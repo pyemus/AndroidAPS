@@ -91,7 +91,7 @@ internal class ActionSourceTest {
     fun getActionsMapsIconAndActivityClassPerSettingName() {
         val byName = actionSource.getActions(resources).associateBy { it.settingName }
 
-        assertThat(byName.getValue("wizard").iconRes).isEqualTo(R.drawable.ic_calculator)
+        assertThat(byName.getValue("wizard").iconRes).isEqualTo(R.drawable.ic_calculator_tile)
         assertThat(byName.getValue("wizard").activityClass).isEqualTo(WizardActivity::class.java.name)
 
         assertThat(byName.getValue("treatment").iconRes).isEqualTo(R.drawable.ic_bolus_carbs)
@@ -188,7 +188,7 @@ internal class ActionSourceTest {
 
         assertThat(refs)
             .containsExactly(
-                R.drawable.ic_calculator,
+                R.drawable.ic_calculator_tile,
                 R.drawable.ic_bolus_carbs,
                 R.drawable.ic_bolus,
                 R.drawable.ic_carbs_orange,

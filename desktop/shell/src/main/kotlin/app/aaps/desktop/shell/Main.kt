@@ -46,6 +46,7 @@ import app.aaps.desktop.shell.config.GeneratedBuildInfo
 import app.aaps.desktop.shell.di.DesktopAppGraph
 import app.aaps.desktop.shell.di.GeneratedStringOwners
 import app.aaps.implementation.logging.AAPSLoggerDesktop
+import app.aaps.desktop.shell.platform.openFolder
 import app.aaps.implementation.maintenance.DesktopFolders
 import app.aaps.shared.clientbindings.ClientGraphBindings
 import app.aaps.shared.clientbindings.ClientViewModelFactory
@@ -201,13 +202,16 @@ private fun startPlugins(graph: DesktopAppGraph) {
     // "dk" is a country code where a language code belongs, and "pt_BR"/"zh_TW"/"zh_CN" use the Java
     // underscore form. Passing those on raw matched no translation, so four of the offered languages
     // showed a fully English app here while Android translated.
-    TextRefValueRegistry.locale =
-        LanguageTag.of(graph.preferences.get(StringKey.GeneralLanguage)) ?: Locale.getDefault().toLanguageTag()
+    TextRefValueRegistry.locale = languageTag(graph.preferences.get(StringKey.GeneralLanguage))
     graph.logger.debug(LTag.CORE, "Language: ${TextRefValueRegistry.locale}")
     // Which marker files were found, so the answer is in the log rather than only in whether a
     // preference row happens to be drawn. An option that is switched off and a marker file that is
     // looked for in the wrong folder produce exactly the same silence, which is how desktop went a
     // long time reading these from the data directory while Android reads them from AAPS/extra.
+    // Created up front so the user finds the folder to put a marker file in (#5250). Nothing else
+    // creates it: only Config reads it.
+    if (!DesktopFolders.extra.isDirectory && !DesktopFolders.extra.mkdirs())
+        graph.logger.error(LTag.CORE, "Cannot create ${DesktopFolders.extra.path}")
     val enabledOptions = ExternalOptions.entries.filter { graph.config.isEnabled(it) }
     graph.logger.debug(
         LTag.CORE,
@@ -227,6 +231,9 @@ private fun startPlugins(graph: DesktopAppGraph) {
     graph.snackbarNotificationFallback.start()
     graph.logger.debug(LTag.CORE, "Registered ${plugins.size} plugins and verified selections")
 }
+
+/** The language tag for the stored language setting, or the machine's language when it follows the device. */
+internal fun languageTag(stored: String): String = LanguageTag.of(stored) ?: Locale.getDefault().toLanguageTag()
 
 /**
  * The shared AAPS Compose root, with the shared navigation graph inside it.
@@ -250,8 +257,10 @@ private fun AapsDesktopApp(graph: DesktopAppGraph, appIcon: Painter, appName: St
     // here: the registry is repointed and the composition rebuilt, which is the same outcome.
     LaunchedEffect(Unit) {
         graph.preferences.observe(StringKey.GeneralLanguage).drop(1).collect {
-            val chosen = graph.preferences.get(StringKey.GeneralLanguage)
-            TextRefValueRegistry.locale = if (chosen == "default") Locale.getDefault().toLanguageTag() else chosen
+            // Through the same fix-up as at start. This used the stored value as it was, so choosing
+            // Danish, Brazilian Portuguese or either Chinese while the app ran gave English text until
+            // the next start.
+            TextRefValueRegistry.locale = languageTag(graph.preferences.get(StringKey.GeneralLanguage))
             logger.debug(LTag.CORE, "Language changed to ${TextRefValueRegistry.locale}")
             graph.uiRestart.request()
         }
@@ -439,7 +448,7 @@ private fun AapsDesktopApp(graph: DesktopAppGraph, appIcon: Painter, appName: St
                             onNotificationActionClick = { n -> navigator.handleNotificationAction(n.id) },
                             onQuickLaunchActionClick = { action -> navigator.handleQuickLaunchAction(action) },
                             onImportSettingsNavigate = { source -> navController.navigate(AppRoute.ImportSettings.createRoute(source.name)) },
-                            onDirectoryClick = { logger.debug(LTag.CORE, "Desktop reads its own folder") },
+                            onDirectoryClick = { openFolder(DesktopFolders.root, logger) },
                             // authBrowser, not urlOpener: the sign in ends at a port this app is
                             // listening on, and DesktopAuthBrowser has the fallback launcher an
                             // ordinary link opener does not. See AuthBrowser.

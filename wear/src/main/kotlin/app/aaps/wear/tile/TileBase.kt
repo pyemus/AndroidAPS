@@ -48,6 +48,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.guava.future
 
+/** Places in the button grid. A longer list shows its first four, in the order the phone sent them. */
+private const val MAX_ACTIONS = 4
 private const val SPACING_ROWS_DP = 4f
 private const val ICON_SIZE_DP = 26f
 private const val BUTTON_PADDING_DP = 4f
@@ -235,7 +237,7 @@ abstract class TileBase : TileService() {
      *   - 4 actions: 2x2 grid
      *
      * @param wearControl Current wear control state
-     * @param actions List of actions to display (0-4 actions)
+     * @param actions List of actions to display; only the first four are drawn
      * @param deviceParameters Screen dimensions and shape
      * @return Layout element to render
      */
@@ -249,7 +251,9 @@ abstract class TileBase : TileService() {
                         wearControl == WearControl.DISABLED -> message(getString(R.string.wear_control_not_enabled))
                         wearControl == WearControl.NO_DATA  -> message(getString(R.string.wear_control_no_data))
                         actions.isEmpty()                   -> message(getString(R.string.tile_no_config))
-                        else                                -> actionGrid(actions.take(4))
+                        // The grid has four places. A source that hands over more (five QuickWizard
+                        // entries valid at the same time) must not leave the tile blank.
+                        else                                -> actionGrid(actions.take(MAX_ACTIONS))
                     }
                 }
             )

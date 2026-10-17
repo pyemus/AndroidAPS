@@ -2,6 +2,7 @@ package app.aaps.pump.omnipod.dash
 
 import android.os.Handler
 import android.os.HandlerThread
+import androidx.annotation.VisibleForTesting
 import app.aaps.core.data.model.BS
 import app.aaps.core.data.plugin.PluginType
 import app.aaps.core.data.pump.defs.ManufacturerType
@@ -31,6 +32,7 @@ import app.aaps.core.interfaces.pump.PumpProfile
 import app.aaps.core.interfaces.pump.PumpRate
 import app.aaps.core.interfaces.pump.PumpSync
 import app.aaps.core.interfaces.pump.defs.fillFor
+import app.aaps.core.interfaces.utils.Round
 import app.aaps.core.interfaces.queue.Command
 import app.aaps.core.interfaces.queue.CommandQueue
 import app.aaps.core.interfaces.queue.CustomCommand
@@ -75,9 +77,9 @@ import app.aaps.pump.omnipod.common.queue.command.CommandUpdateAlertConfiguratio
 import app.aaps.pump.omnipod.common.util.mapProfileToBasalProgram
 import app.aaps.pump.omnipod.dash.driver.OmnipodDashManager
 import app.aaps.pump.omnipod.dash.history.DashHistory
-import app.aaps.pump.omnipod.dash.history.data.BasalValuesRecord
-import app.aaps.pump.omnipod.dash.history.data.BolusRecord
-import app.aaps.pump.omnipod.dash.history.data.TempBasalRecord
+import app.aaps.pump.omnipod.common.history.data.BasalValuesRecord
+import app.aaps.pump.omnipod.common.history.data.BolusRecord
+import app.aaps.pump.omnipod.common.history.data.TempBasalRecord
 import app.aaps.pump.omnipod.dash.history.database.DashHistoryDatabase
 import app.aaps.pump.omnipod.dash.ui.compose.OmnipodDashComposeContent
 import app.aaps.pump.omnipod.dash.util.Constants
@@ -258,8 +260,11 @@ class OmnipodDashPumpPlugin(
 
     override fun isBusy(): Boolean {
         // prevents the queue from executing commands
-        return podStateManager.activationProgress != ActivationProgress.NOT_STARTED &&
-            podStateManager.activationProgress.isBefore(ActivationProgress.COMPLETED)
+        // The progress alone does not cover pairing: it is still NOT_STARTED until the first step is done,
+        // and the queue then ran and disconnected in the middle of the pairing (#5219).
+        return omnipodManager.isActivationRunning ||
+            (podStateManager.activationProgress != ActivationProgress.NOT_STARTED &&
+                podStateManager.activationProgress.isBefore(ActivationProgress.COMPLETED))
     }
 
     override fun isConnected(): Boolean {
@@ -313,6 +318,11 @@ class OmnipodDashPumpPlugin(
 
     override fun disconnect(reason: String) {
         aapsLogger.info(LTag.PUMP, "disconnect reason=$reason")
+        if (omnipodManager.isActivationRunning) {
+            // The activation uses the BLE link outside the queue. Closing it here broke the pairing (#5219).
+            aapsLogger.info(LTag.PUMP, "disconnect ignored, pod activation is running")
+            return
+        }
         stopConnecting?.countDown()
         omnipodManager.disconnect(false)
     }
@@ -607,6 +617,14 @@ class OmnipodDashPumpPlugin(
         return equal
     }
 
+    /**
+     * The 24 hourly rates the pod runs: the program it confirmed, each rate rounded to the nearest 0.05 U/h (#2454).
+     * null without an activated pod or a confirmed program: the profile counts as it was sent.
+     */
+    override fun deliveredBasal(): List<Profile.ProfileValue>? =
+        if (!podStateManager.isActivationCompleted) null
+        else podStateManager.basalProgram?.hourlyRates()?.mapIndexed { hour, rate -> Profile.ProfileValue(T.hours(hour.toLong()).secs().toInt(), rate) }
+
     private val _lastDataTime = MutableStateFlow(0L)
     override val lastDataTime: StateFlow<Long> = _lastDataTime
 
@@ -798,8 +816,14 @@ class OmnipodDashPumpPlugin(
             if (bolusType == BolusType.SMB) {
                 continue
             }
-            val percent = (waited.toFloat() / estimatedDeliveryTimeSeconds) * 100
-            bolusProgressData.updateProgress(percent = percent.toInt())
+            bolusProgressData.updateProgress(
+                delivered = PumpInsulin(
+                    Round.roundTo(
+                        (waited.toFloat() / estimatedDeliveryTimeSeconds) * requestedBolusAmount,
+                        PodConstants.POD_PULSE_BOLUS_UNITS
+                    )
+                )
+            )
         }
 
         (1..BOLUS_RETRIES).forEach { tryNumber ->
@@ -816,7 +840,7 @@ class OmnipodDashPumpPlugin(
             } catch (e: Exception) {
                 errorGettingStatus = e
                 aapsLogger.debug(LTag.PUMP, "waitForBolusDeliveryToComplete errorGettingStatus=$errorGettingStatus")
-                Thread.sleep(BOLUS_RETRY_INTERVAL_MS) // retry every 3 sec
+                Thread.sleep(BOLUS_RETRY_INTERVAL_MS) // retry every 2 sec
             }
             if (errorGettingStatus != null) {
                 return@forEach
@@ -826,14 +850,13 @@ class OmnipodDashPumpPlugin(
             if (bolusDeliveringActive) {
                 // delivery not complete yet
                 val remainingUnits = podStateManager.lastBolus!!.bolusUnitsRemaining
-                val percent = ((requestedBolusAmount - remainingUnits) / requestedBolusAmount) * 100
-                bolusProgressData.updateProgress(percent = percent.toInt())
+                bolusProgressData.updateProgress(delivered = PumpInsulin(requestedBolusAmount - remainingUnits))
 
-                val sleepSeconds = if (bolusCanceled)
+                val sleepMillis = if (bolusCanceled)
                     BOLUS_RETRY_INTERVAL_MS
                 else
-                    estimateBolusDeliverySeconds(remainingUnits)
-                Thread.sleep(sleepSeconds * 1000.toLong())
+                    estimateBolusDeliverySeconds(remainingUnits) * 1000L
+                Thread.sleep(sleepMillis)
             } else {
                 // delivery is complete. If pod is Kaput, we are handling this in getPodStatus
                 return@defer Single.just(podStateManager.lastBolus!!.deliveredUnits()!!)
@@ -1353,7 +1376,8 @@ class OmnipodDashPumpPlugin(
         Completable.complete()
     }
 
-    private suspend fun handleCommandConfirmation(confirmation: CommandConfirmed) {
+    @VisibleForTesting
+    internal suspend fun handleCommandConfirmation(confirmation: CommandConfirmed) {
         val command = confirmation.command
         val historyEntry = history.getById(command.historyId)
         aapsLogger.debug(LTag.PUMPCOMM, "handling command confirmation: $confirmation ${historyEntry.commandType}")
@@ -1398,13 +1422,18 @@ class OmnipodDashPumpPlugin(
                 }
             }
 
-            OmnipodCommandType.SET_BASAL_PROFILE      -> {
+            // Setting the time is the same pod command as a profile change: suspend, then a new basal program.
+            // The suspend also starts a "pump suspended" temp basal and the pod's "delivery suspended" alert
+            // (20 min), so both must be ended here too. Without SET_TIME the pod beeped about 20 min after
+            // every time change while basal was running again (#2982).
+            OmnipodCommandType.SET_BASAL_PROFILE,
+            OmnipodCommandType.SET_TIME               -> {
                 if (confirmation.success) {
                     podStateManager.basalProgram = command.basalProgram
                     if (podStateManager.basalProgram == null) {
                         aapsLogger.warn(LTag.PUMP, "Saving null basal profile")
                     }
-                    if (!commandQueue.isRunning(Command.CommandType.BASAL_PROFILE)) {
+                    if (historyEntry.commandType == OmnipodCommandType.SET_BASAL_PROFILE && !commandQueue.isRunning(Command.CommandType.BASAL_PROFILE)) {
                         // we are late-confirming this command. before that, we answered with success:false
                         rxBus.send(EventProfileChangeRequested())
                     }
@@ -1474,7 +1503,7 @@ class OmnipodDashPumpPlugin(
                     record as BolusRecord
 
                     podStateManager.createLastBolus(
-                        record.amout,
+                        record.amount,
                         command.historyId,
                         record.bolusType
                     )

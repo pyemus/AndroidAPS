@@ -4,7 +4,9 @@ import androidx.wear.protolayout.DeviceParametersBuilders.DeviceParameters
 import androidx.wear.protolayout.DeviceParametersBuilders.SCREEN_SHAPE_ROUND
 import androidx.wear.protolayout.LayoutElementBuilders.Box
 import androidx.wear.protolayout.LayoutElementBuilders.Column
+import androidx.wear.protolayout.LayoutElementBuilders.Image
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
+import androidx.wear.protolayout.LayoutElementBuilders.Row
 import androidx.wear.protolayout.LayoutElementBuilders.Text
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.ResourceBuilders
@@ -12,6 +14,7 @@ import androidx.wear.tiles.TileBuilders
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.wear.AAPSLoggerTest
+import app.aaps.wear.R
 import app.aaps.wear.tile.source.ActionSource
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.ListenableFuture
@@ -27,8 +30,8 @@ import org.robolectric.annotation.Config
 
 /**
  * Covers the shared tile layout engine [TileBase] via the concrete [ActionsTileService]: onTileRequest across
- * every [WearControl] state and 0–4 action grid arrangement (which drives the button geometry, text sizing and
- * screen-shape branches), the freshness/resource-version wiring, and onResourcesRequest image mapping.
+ * every [WearControl] state and the 0–4 action grid (and that a longer list is cut to four), the
+ * freshness/resource-version wiring, and onResourcesRequest image mapping.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -84,15 +87,29 @@ internal class TileBaseTest {
         return (m.invoke(this, req) as ListenableFuture<ResourceBuilders.Resources>).get()
     }
 
-    // The layout wraps the real content with a flavor header: a round screen overlays a curved Arc header
-    // (Box[content, header]); a square screen stacks a flat Text header above it (Column[header, content]).
-    // Unwrap so assertions target the content element itself, not the header wrapper.
-    private fun contentOf(svc: ActionsTileService, req: RequestBuilders.TileRequest = request()): LayoutElement? =
-        when (val root = svc.tileRequest(req).tileTimeline?.timelineEntries?.first()?.layout?.root) {
-            is Box    -> root.contents.firstOrNull()
-            is Column -> root.contents.getOrNull(1)
-            else      -> root
-        }
+    // The Material 3 primary layout wraps the content in boxes and columns of its own, and the title slot
+    // adds a Text. Walk the whole tree and look for what the tile is meant to show: a message Text, or one
+    // icon Image per action button.
+    private fun flatten(element: LayoutElement?): List<LayoutElement> = when (element) {
+        null      -> emptyList()
+        is Box    -> listOf(element) + element.contents.flatMap(::flatten)
+        is Column -> listOf(element) + element.contents.flatMap(::flatten)
+        is Row    -> listOf(element) + element.contents.flatMap(::flatten)
+        else      -> listOf(element)
+    }
+
+    private fun elementsOf(svc: ActionsTileService, req: RequestBuilders.TileRequest = request()): List<LayoutElement> =
+        flatten(svc.tileRequest(req).tileTimeline?.timelineEntries?.first()?.layout?.root)
+
+    private fun textsOf(elements: List<LayoutElement>): List<String> = elements.filterIsInstance<Text>().mapNotNull { it.text?.value }
+
+    private fun iconCount(elements: List<LayoutElement>): Int = elements.count { it is Image }
+
+    private fun assertMessage(svc: ActionsTileService, message: String) {
+        val elements = elementsOf(svc)
+        assertThat(textsOf(elements)).contains(message)
+        assertThat(iconCount(elements)).isEqualTo(0)
+    }
 
     // ---- WearControl states: each renders an explanatory Text, never buttons ----
 
@@ -100,40 +117,58 @@ internal class TileBaseTest {
         noData()
         whenever(source.getSelectedActions()).thenReturn(listOf(action()))
         whenever(source.getValidFor()).thenReturn(null)
-        assertThat(contentOf(service())).isInstanceOf(Text::class.java)
+        val svc = service()
+        assertMessage(svc, svc.getString(R.string.wear_control_no_data))
     }
 
     @Test fun `disabled shows a text message`() {
         disabled()
         whenever(source.getSelectedActions()).thenReturn(listOf(action()))
         whenever(source.getValidFor()).thenReturn(null)
-        assertThat(contentOf(service())).isInstanceOf(Text::class.java)
+        val svc = service()
+        assertMessage(svc, svc.getString(R.string.wear_control_not_enabled))
     }
 
     @Test fun `enabled with no actions shows the no-config text`() {
         enabled()
         whenever(source.getSelectedActions()).thenReturn(emptyList())
         whenever(source.getValidFor()).thenReturn(null)
-        assertThat(contentOf(service())).isInstanceOf(Text::class.java)
+        val svc = service()
+        assertMessage(svc, svc.getString(R.string.tile_no_config))
     }
 
-    // ---- grid arrangements: 1..4 actions all build a Column of buttons ----
+    // ---- grid arrangements: 1..4 actions all build one button per action ----
 
-    @Test fun `enabled with 1 to 4 actions builds a column of buttons`() {
+    @Test fun `enabled with 1 to 4 actions builds one button per action`() {
         enabled()
         whenever(source.getValidFor()).thenReturn(null)
         for (n in 1..4) {
-            whenever(source.getSelectedActions()).thenReturn((1..n).map { action() })
-            assertThat(contentOf(service())).isInstanceOf(Column::class.java)
+            whenever(source.getSelectedActions()).thenReturn((1..n).map { action(text = "A$it") })
+            val elements = elementsOf(service())
+            assertThat(iconCount(elements)).isEqualTo(n)
+            assertThat(textsOf(elements)).containsAtLeastElementsIn((1..n).map { "A$it" })
         }
     }
 
-    @Test fun `square screen with icon-only and long-label actions still builds a column`() {
+    /** Five QuickWizard entries valid at the same time matched no arrangement, and the tile came out blank. */
+    @Test fun `enabled with more than 4 actions draws the first four`() {
         enabled()
         whenever(source.getValidFor()).thenReturn(null)
-        // icon-only (no text branch) + a >6 char label on a small square screen exercises the geometry/text-size branches
+        whenever(source.getSelectedActions()).thenReturn((1..6).map { action(text = "A$it") })
+        val elements = elementsOf(service())
+        assertThat(iconCount(elements)).isEqualTo(4)
+        assertThat(textsOf(elements)).containsAtLeast("A1", "A2", "A3", "A4")
+        assertThat(textsOf(elements)).containsNoneOf("A5", "A6")
+    }
+
+    @Test fun `square screen with icon-only and long-label actions still builds the buttons`() {
+        enabled()
+        whenever(source.getValidFor()).thenReturn(null)
+        // icon-only (no text branch) + a long label on a small square screen
         whenever(source.getSelectedActions()).thenReturn(listOf(action(text = null, sub = null), action(text = "VeryLongLabel", sub = "sub")))
-        assertThat(contentOf(service(), request(round = false, widthDp = 160, heightDp = 160))).isInstanceOf(Column::class.java)
+        val elements = elementsOf(service(), request(round = false, widthDp = 160, heightDp = 160))
+        assertThat(iconCount(elements)).isEqualTo(2)
+        assertThat(textsOf(elements)).contains("VeryLongLabel")
     }
 
     // ---- freshness + resource-version wiring ----

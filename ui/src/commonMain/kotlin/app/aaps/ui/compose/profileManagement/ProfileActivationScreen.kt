@@ -1,8 +1,5 @@
 package app.aaps.ui.compose.profileManagement
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +52,7 @@ import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsTopAppBar
 import app.aaps.core.ui.compose.DateTimeSection
 import app.aaps.core.ui.compose.EventTimeRow
+import app.aaps.core.ui.compose.ExpandableNumberInputRow
 import app.aaps.core.ui.compose.InsulinSelector
 import app.aaps.core.ui.compose.LocalDateUtil
 import app.aaps.core.ui.compose.NumberInputRow
@@ -293,50 +291,26 @@ fun ProfileActivationScreen(
                     // Timeshift (collapsible)
                     var timeshiftExpanded by rememberSaveable { mutableStateOf(false) }
                     val timeshiftExpandRequester = rememberBringIntoViewOnExpand(timeshiftExpanded)
-                    Column(modifier = itemModifier.bringIntoViewRequester(timeshiftExpandRequester)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = stringResource(CoreUiStrings.timeshift_label) + ": ",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${timeshift.toInt()}h",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (timeshift.toInt() != 0) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            if (!timeshiftExpanded) {
-                                FilledTonalButton(onClick = { timeshiftExpanded = true }) {
-                                    Text(stringResource(CoreUiStrings.change))
-                                }
-                            }
-                        }
-                        AnimatedVisibility(
-                            visible = timeshiftExpanded,
-                            enter = expandVertically(),
-                            exit = shrinkVertically()
-                        ) {
-                            NumberInputRow(
-                                labelRef = CoreUiStrings.timeshift_label,
-                                value = timeshift,
-                                onValueChange = { timeshift = it },
-                                valueRange = Constants.CPP_TIMESHIFT_RANGE,
-                                step = 1.0,
-                                unitLabel = CoreUiStrings.units_hours
+                    ExpandableNumberInputRow(
+                        labelRef = CoreUiStrings.timeshift_label,
+                        value = timeshift,
+                        onValueChange = { timeshift = it },
+                        valueRange = Constants.CPP_TIMESHIFT_RANGE,
+                        step = 1.0,
+                        unitLabel = CoreUiStrings.units_hours,
+                        expanded = timeshiftExpanded,
+                        onExpandedChange = { timeshiftExpanded = it },
+                        modifier = itemModifier.bringIntoViewRequester(timeshiftExpandRequester),
+                        // Highlighted when not 0, so a shift left from the last switch is noticed.
+                        valueContent = {
+                            Text(
+                                text = stringResource(CoreUiStrings.format_hours_only, timeshift.toInt()),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (timeshift.toInt() != 0) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
+                    )
 
                     // Reuse button
                     if (hasReuseValues && (currentPercentage != 100 || currentTimeshiftHours != 0)) {
