@@ -113,6 +113,23 @@ class SceneSourceTest {
     }
 
     @Test
+    fun expiredSceneOffersDismissInsteadOfEnd() {
+        // The scene ran out but its banner is still up on the phone: the same stop command now
+        // clears the banner, and the button says so, as the phone's own banner does
+        whenever(resources.getString(R.string.scene_dismiss)).thenReturn("Dismiss")
+        stubActiveSceneState(EventData.ActiveSceneState(active = true, sceneName = "Sleep", endTime = 1_000L, expired = true).serialize())
+
+        val actions = sceneSource.getSelectedActions()
+
+        assertThat(actions).hasSize(1)
+        val dismiss = actions.single()
+        assertThat(dismiss.buttonText).isEqualTo("Dismiss")
+        assertThat(dismiss.buttonTextSub).isEqualTo("Sleep")
+        assertThat(dismiss.iconRes).isEqualTo(R.drawable.ic_scene_end)
+        assertThat(dismiss.action).isEqualTo(EventData.ActionSceneStopPreCheck(triggerChain = false))
+    }
+
+    @Test
     fun activeSceneWithFollowUpOffersSkipBesideEnd() {
         stubActiveSceneState(EventData.ActiveSceneState(active = true, sceneName = "Sleep", endTime = 1_000L, chainTargetName = "Wake up").serialize())
 

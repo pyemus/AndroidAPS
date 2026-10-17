@@ -15,7 +15,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.map
 
 @ContributesBinding(AppScope::class)
@@ -38,8 +38,13 @@ class SceneAutomationApiImpl(
 
     override fun hasSceneToStop(): Boolean = activeSceneManager.isActive()
 
+    // Keyed on what the watch shows, not only on "something is active": expiry changes the tile's
+    // button, and a chain swaps one scene for another so fast that the StateFlow can conflate the
+    // null in between - a plain boolean would then never emit and the tile would keep the old name.
     override val activeFlow: Flow<Boolean> =
-        activeSceneManager.activeSceneState.map { it != null }.distinctUntilChanged()
+        activeSceneManager.activeSceneState
+            .distinctUntilChangedBy { state -> state?.let { Triple(it.scene.id, it.activatedAt, it.lifecycle) } }
+            .map { it != null }
 
     override suspend fun stopActiveScene(): SceneAutomationResult =
         when {

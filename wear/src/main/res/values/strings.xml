@@ -102,6 +102,7 @@
     <string name="action_user_action_confirmation">User Action Requested</string>
     <string name="action_scene_confirmation">Scene Requested</string>
     <string name="scene_end">End</string>
+    <string name="scene_dismiss" comment="Scene tile button shown when the scene already ran out: clears the ended scene on the phone. The scene's name is shown under it.">Dismiss</string>
     <string name="scene_skip" comment="Scene tile button: end the active scene and start its follow-up scene. The follow-up's name is shown under it.">Skip</string>
     <string name="action_treatment_confirmation">Treatment Requested</string>
     <string name="action_bolus_confirmation">Bolus Requested</string>

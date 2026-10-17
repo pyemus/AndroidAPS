@@ -189,10 +189,11 @@ class DataHandlerMobileSceneTest : TestBaseWithProfile() {
 
     @Test
     fun `an expired scene keeps its name but offers no follow-up`() = runTest {
-        // The master's expiry already dealt with the follow-up; the banner can still be ended from the watch
+        // The master's expiry already dealt with the follow-up; the banner can still be ended from the
+        // watch, and the tile is told it is a dismiss now
         activeScene(lifecycle = SceneLifecycle.EXPIRED)
         val sent = captured { sut.sendActiveSceneState(active = true) }
-        assertThat(sent).isEqualTo(EventData.ActiveSceneState(active = true, sceneName = "Sleep", endTime = 3_601_000L, chainTargetName = null))
+        assertThat(sent).isEqualTo(EventData.ActiveSceneState(active = true, sceneName = "Sleep", endTime = 3_601_000L, chainTargetName = null, expired = true))
         verifyBlocking(sceneChainResolver, never()) { resolveRunnableChainTarget(any()) }
     }
 

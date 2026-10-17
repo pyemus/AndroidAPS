@@ -20,15 +20,16 @@ class SceneSource(private val context: Context, private val sp: SP, private val 
 
     override fun getSelectedActions(): List<Action> {
         activeSceneState()?.takeIf { it.active }?.let { state ->
-            aapsLogger.info(LTag.WEAR, "getSelectedActions: scene ${state.sceneName} is active, showing End" + if (state.chainTargetName != null) " and Skip" else "")
+            aapsLogger.info(LTag.WEAR, "getSelectedActions: scene ${state.sceneName} is active, showing " + (if (state.expired) "Dismiss" else "End") + if (state.chainTargetName != null) " and Skip" else "")
             // End, with the scene's name under it; and Skip when the phone says a follow-up can
             // start, with the follow-up's name under it - the two choices the phone's own End
             // dialog offers. A phone from before the follow-up fields sends neither name, and the
-            // tile then looks as it did.
+            // tile then looks as it did. Once the scene ran out the phone's banner says Dismiss,
+            // and so does the tile: the same stop command then clears the banner.
             return buildList {
                 add(
                     Action(
-                        buttonText = context.resources.getString(R.string.scene_end),
+                        buttonText = context.resources.getString(if (state.expired) R.string.scene_dismiss else R.string.scene_end),
                         buttonTextSub = state.sceneName,
                         iconRes = R.drawable.ic_scene_end,
                         activityClass = BackgroundActionActivity::class.java.name,

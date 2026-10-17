@@ -167,13 +167,16 @@ sealed class EventData : Event() {
      * @param endTime when the scene ends, epoch ms; null for an indefinite scene
      * @param chainTargetName the follow-up scene that would start on "Skip to", resolved on the
      *   phone with the master's runtime checks or the client's catalog; null when there is none
+     * @param expired true once the scene ran out but its banner is still up on the phone: the tile
+     *   then offers Dismiss instead of End, as the phone's banner does. An old phone never sets it.
      */
     @Serializable
     data class ActiveSceneState(
         val active: Boolean,
         val sceneName: String? = null,
         val endTime: Long? = null,
-        val chainTargetName: String? = null
+        val chainTargetName: String? = null,
+        val expired: Boolean = false
     ) : EventData()
 
     @Serializable

@@ -1252,7 +1252,8 @@ class DataHandlerMobile(
      * What the watch shows for the active scene: the tile's End button, its Skip button when a
      * follow-up can start, and the Loop Status card. [active] comes from the caller so this agrees
      * with `scenes.activeFlow`, which is wider than "running": an expired scene whose banner is
-     * still up can be ended too, and then carries its name but no follow-up.
+     * still up can be ended too, and then carries its name but no follow-up, and is marked expired
+     * so the tile offers Dismiss rather than End.
      */
     suspend fun sendActiveSceneState(active: Boolean) {
         val state = if (active) activeSceneSync.getActiveState() else null
@@ -1261,7 +1262,8 @@ class DataHandlerMobile(
                 active = active,
                 sceneName = state?.scene?.name,
                 endTime = state?.endsAt,
-                chainTargetName = state?.let { chainTargetOf(it) }?.name
+                chainTargetName = state?.let { chainTargetOf(it) }?.name,
+                expired = state?.lifecycle == SceneLifecycle.EXPIRED
             )
         )
     }

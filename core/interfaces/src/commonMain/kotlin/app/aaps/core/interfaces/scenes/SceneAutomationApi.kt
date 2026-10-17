@@ -62,7 +62,9 @@ interface SceneAutomationApi {
     fun hasSceneToStop(): Boolean
 
     /** Emits true when there's a stoppable scene state — running OR expired-with-banner.
-     *  Used by wear-sync to drive the tile's stop button visibility. Matches [hasSceneToStop]. */
+     *  Used by wear-sync to drive the tile's stop button visibility. Matches [hasSceneToStop].
+     *  Emits again, without a change of value, when the scene itself changes: a different scene
+     *  took over, or the scene expired. The wear-sync re-reads the state on every emission. */
     val activeFlow: Flow<Boolean>
 
     /** End the active scene (deactivate) or dismiss the expired banner. No-op if nothing active. */

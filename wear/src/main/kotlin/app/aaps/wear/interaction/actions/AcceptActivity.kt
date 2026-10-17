@@ -79,7 +79,9 @@ import kotlinx.serialization.json.Json
  * [app.aaps.core.interfaces.rx.weardata.EventData.ConfirmAction]), both of which dismiss the spinner.
  *
  * Dismiss behaviour: non-wizard flows finish immediately on [onPause] (screen off / navigated away); wizard flows
- * instead start a 30s grace-period job so a brief wrist-down doesn't destroy the result — cancelled by [onResume].
+ * and scene flows instead start a 30s grace-period job so a brief wrist-down doesn't destroy the result — cancelled
+ * by [onResume]. Scene confirms get the grace because they are opened from a tile, often mid-activity, and a dimmed
+ * screen or a system screen on top used to close them before the wearer could confirm; nothing is dosed by them.
  * Non-wizard flows also have a 60s [LaunchedEffect] absolute timeout as a backstop.
  */
 class AcceptActivity : AppCompatActivity() {
@@ -88,6 +90,7 @@ class AcceptActivity : AppCompatActivity() {
     private var deferConfirm = false
     private var wizardBolusId: Long? = null
     private var isWizardFlow = false
+    private var isSceneFlow = false
     private var screenOffJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,6 +119,9 @@ class AcceptActivity : AppCompatActivity() {
             ?.let { runCatching { Json.decodeFromString<EventData.WizardDetail>(it) }.getOrNull() }
 
         isWizardFlow = wizardDetail != null
+        // deserialize() never throws: anything unreadable comes back as Error, which is not a scene flow
+        isSceneFlow = actionKey.isNotEmpty() && EventData.deserialize(actionKey)
+            .let { it is EventData.ActionSceneConfirmed || it is EventData.ActionSceneStopConfirmed }
 
         if (wizardDetail != null && actionKey.isNotEmpty()) {
             wizardBolusId = runCatching {
@@ -257,7 +263,7 @@ class AcceptActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (isWizardFlow) {
+        if (isWizardFlow || isSceneFlow) {
             screenOffJob?.cancel()
             screenOffJob = lifecycleScope.launch {
                 delay(30_000)

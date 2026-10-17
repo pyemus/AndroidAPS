@@ -259,6 +259,10 @@ class EventDataTest {
             assertThat(EventData.deserializeByte(it.serializeByte())).isEqualTo(it)
             assertThat(EventData.deserialize(it.serialize())).isEqualTo(it)
         }
+        EventData.ActiveSceneState(active = true, sceneName = "Sleep", endTime = 1_000L, expired = true).let {
+            assertThat(EventData.deserializeByte(it.serializeByte())).isEqualTo(it)
+            assertThat(EventData.deserialize(it.serialize())).isEqualTo(it)
+        }
         EventData.LoopStatusResponse(
             timeStamp = 1L,
             data = LoopStatusData(
