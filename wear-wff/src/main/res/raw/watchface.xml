@@ -320,10 +320,10 @@
         </DigitalClock>
 
         <!-- date between COB and IOB -->
-        <PartText x="170" y="252" width="110" height="34">
+        <PartText x="155" y="252" width="140" height="34">
             <Variant mode="AMBIENT" target="alpha" value="0" />
             <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="#FF9EA1AA">
-                <Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
+                <Template>%s %s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template></Font></Text>
         </PartText>
 
     </Scene>
