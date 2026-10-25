@@ -107,6 +107,18 @@ enum class StringKey(
 
     AapsDirectoryUri(key = "aaps_directory", defaultValue = "", title = KeysStrings.pref_title_aaps_directory),
 
+    /**
+     * Name of the profile Autotune measures its limits against (autosens min/max). Empty: the limits follow
+     * the profile being tuned, so an auto-switched run can move it a little further every time.
+     */
+    AutotuneReferenceProfile(
+        key = "autotune_reference_profile",
+        defaultValue = "",
+        title = KeysStrings.pref_title_autotune_reference_profile,
+        summary = KeysStrings.pref_summary_autotune_reference_profile,
+        preferenceType = PreferenceType.LIST
+    ),
+
     ProtectionMasterPassword(key = "master_password", defaultValue = "", title = KeysStrings.pref_title_master_password, isPassword = true, isHashed = true),
     ProtectionSettingsPassword(
         key = "settings_password", defaultValue = "", title = KeysStrings.pref_title_settings_password, isPassword = true, isHashed = true,

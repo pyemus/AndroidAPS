@@ -241,7 +241,16 @@ enum class NotificationId(
     // The End Scene dialog does not show the result, so without this nothing said so. IMPORTANT: it changes
     // insulin delivery until the user activates a profile, but nothing is delivered wrongly now.
     // Appended at the END for the same reason as above.
-    SCENE_PROFILE_NOT_RESTORED(IMPORTANT, AUTOMATION);
+    SCENE_PROFILE_NOT_RESTORED(IMPORTANT, AUTOMATION),
+
+    // Autotune ran with "Auto switch profile" on, but the result moved the total daily basal further from the
+    // reference profile than the user allows, so nothing was switched. The result is kept for a manual check.
+    // Appended at the END for the same reason as above.
+    AUTOTUNE_AUTO_SWITCH_SKIPPED(IMPORTANT, PROFILE),
+
+    // The reference profile named in the Autotune settings is missing, not valid, or the profile being tuned, so
+    // the limits follow the tuned profile instead and the protection the user set up is not there.
+    AUTOTUNE_REFERENCE_PROFILE_UNUSABLE(IMPORTANT, PROFILE);
 
     companion object {
 

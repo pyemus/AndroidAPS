@@ -93,9 +93,11 @@ autosens_adjust_targets|BooleanKey|true
 autosens_max|DoubleKey|true
 autosens_min|DoubleKey|true
 autotune_additional_log|BooleanKey|true
+autotune_auto_switch_max_basal_change|IntKey|true
 autotune_auto|BooleanKey|true
 autotune_circadian_ic_isf|BooleanKey|true
 autotune_default_tune_days|IntKey|true
+autotune_reference_profile|StringKey|true
 autotune_tune_insulin_curve|BooleanKey|true
 bgAccel_ISF_weight|DoubleKey|true
 bgBrake_ISF_weight|DoubleKey|true

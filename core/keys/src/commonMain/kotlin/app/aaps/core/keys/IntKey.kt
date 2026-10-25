@@ -415,6 +415,16 @@ enum class IntKey(
     ),
 
     AutotuneDefaultTuneDays(key = "autotune_default_tune_days", defaultValue = 5, min = 1, max = 30, title = KeysStrings.pref_title_autotune_days, summary = KeysStrings.autotune_default_tune_days_summary, unitType = UnitType.DAYS),
+    AutotuneAutoSwitchMaxBasalChange(
+        key = "autotune_auto_switch_max_basal_change",
+        defaultValue = 20,
+        min = 1,
+        max = 200,
+        title = KeysStrings.pref_title_autotune_auto_switch_max_basal_change,
+        summary = KeysStrings.pref_summary_autotune_auto_switch_max_basal_change,
+        dependency = BooleanKey.AutotuneAutoSwitchProfile,
+        unitType = UnitType.PERCENT
+    ),
 
     SmsRemoteBolusDistance(
         key = "smscommunicator_remotebolusmindistance",

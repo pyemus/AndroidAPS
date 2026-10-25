@@ -87,6 +87,8 @@
     <string name="autotune_warning_after_run">Check the results carefully before using it!</string>
     <string name="autotune_partial_result">Partial result day %1$d / %2$d tuned</string>
     <string name="autotune_result">Result: %1$s</string>
+    <string name="autotune_auto_switch_skipped" comment="%1$s=total daily basal of the Autotune result with unit, %2$s=name of the reference profile, %3$s=its total daily basal with unit, %4$d=difference in percent, %5$d=the allowed limit in percent. Example: Auto switch skipped: 40.8 U is 56% away from Normal (26.2 U), the limit is 20%. Check the result and activate it by hand.">Auto switch skipped: %1$s is %4$d%% away from %2$s (%3$s), the limit is %5$d%%. Check the result and activate it by hand.</string>
+    <string name="autotune_reference_profile_unusable" comment="%1$s=name of the reference profile from the Autotune settings, %2$s=name of the profile Autotune tunes. Example: Reference profile Normal is missing, not valid, or the same as the tuned profile Tuned. The Autotune limits follow the tuned profile until this is fixed in the Autotune settings.">Reference profile %1$s is missing, not valid, or the same as the tuned profile %2$s. The Autotune limits follow the tuned profile until this is fixed in the Autotune settings.</string>
     <string name="autotune_param">Param</string>
     <string name="autotune_percent">%</string>
     <string name="autotune_missing">Missing</string>

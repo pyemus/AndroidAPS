@@ -4,8 +4,16 @@ import android.view.View
 import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.ICfg
+import app.aaps.core.data.model.data.Block
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.logging.UserEntryLogger
+import app.aaps.core.interfaces.notifications.AlarmSound
+import app.aaps.core.interfaces.notifications.NotificationAction
+import app.aaps.core.interfaces.notifications.NotificationId
+import app.aaps.core.interfaces.notifications.NotificationLevel
+import app.aaps.core.keys.IntKey
+import app.aaps.core.keys.StringKey
+import app.aaps.core.objects.profile.ProfileSealed
 import app.aaps.plugins.aps.R
 import app.aaps.plugins.aps.autotune.data.ATProfile
 import app.aaps.shared.tests.TestBaseWithProfile
@@ -18,10 +26,13 @@ import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.mockito.verification.VerificationMode
 
 class AutotunePluginTest : TestBaseWithProfile() {
 
@@ -61,7 +72,7 @@ class AutotunePluginTest : TestBaseWithProfile() {
             loop = loop,
             profileStoreProvider = { profileStoreProvider() },
             atProfileProvider = atProfileProvider,
-            notificationManager = mock()
+            notificationManager = notificationManager
         )
         runBlocking {
             whenever(profileFunction.getProfile()).thenReturn(effectiveProfile)
@@ -71,6 +82,22 @@ class AutotunePluginTest : TestBaseWithProfile() {
         whenever(rh.gs(R.string.autotune_tunedprofile_name)).thenReturn("Tuned")
         whenever(rh.gs(R.string.autotune_error_more_days)).thenReturn("Not enough days")
         whenever(rh.gs(app.aaps.core.ui.R.string.profile_switch_no_insulin)).thenReturn("No insulin in use")
+        // No reference profile, and a limit wide enough that the guard stays out of the way unless a test narrows it.
+        whenever(preferences.get(StringKey.AutotuneReferenceProfile)).thenReturn("")
+        whenever(preferences.get(IntKey.AutotuneAutoSwitchMaxBasalChange)).thenReturn(200)
+        whenever(rh.gs(eq(R.string.autotune_reference_profile_unusable), any(), any())).thenReturn("Unusable reference")
+        whenever(rh.gs(app.aaps.core.ui.R.string.format_insulin_units1)).thenReturn("%1\$.1f U")
+    }
+
+    /** The profile in force with its basal multiplied by [factor]; the test base's one is 1 U/h flat. */
+    private fun inForceProfileScaledBy(factor: Double): ProfileSealed.EPS {
+        val scaled = effectiveProfileSwitch.copy(basalBlocks = effectiveProfileSwitch.basalBlocks.map { Block(it.duration, it.amount * factor) })
+        return ProfileSealed.EPS(scaled, activePlugin)
+    }
+
+    /** The plugin posts with the plain `post(id, text)` overload; the typed matchers pin that overload down. */
+    private fun verifyPosted(id: NotificationId, text: String, mode: VerificationMode = times(1)) {
+        verify(notificationManager, mode).post(eq(id), eq(text), any<NotificationLevel>(), any<Int>(), anyOrNull<AlarmSound>(), any<List<NotificationAction>>(), anyOrNull())
     }
 
     /** The peak autotune actually ran with, read back out of the oref0 settings it exported. */
@@ -113,9 +140,13 @@ class AutotunePluginTest : TestBaseWithProfile() {
         verify(autotuneFS, never()).exportSettings(any())
     }
 
-    /** Drives a complete one-day run so the trailing autoSwitch block is reached. */
-    private suspend fun runOneTunedDay(autoSwitch: Boolean) {
+    /**
+     * Drives a complete one-day run so the trailing autoSwitch block is reached. [basalFactor] scales the basal
+     * of the result the mocked core hands back, so a test can move its total away from the profile being tuned.
+     */
+    private suspend fun runOneTunedDay(autoSwitch: Boolean, basalFactor: Double = 1.0) {
         val tuned = ATProfile(preferences, profileUtil, dateUtil, rh, { profileStoreProvider() }, aapsLogger).with(validProfile, someICfg)
+        for (hour in 0..23) tuned.basal[hour] *= basalFactor
         whenever(autotuneIob.boluses).thenReturn(arrayListOf(BS(timestamp = 0, amount = 1.0, type = BS.Type.NORMAL, iCfg = someICfg)))
         whenever(autotunePrep.categorize(any())).thenReturn(mock())
         whenever(autotuneCore.tuneAllTheThings(any(), any(), any())).thenReturn(tuned)
@@ -169,5 +200,101 @@ class AutotunePluginTest : TestBaseWithProfile() {
 
         assertThat(autotunePlugin.result).isEqualTo("The pump cannot take it")
         assertThat(autotunePlugin.updateButtonVisibility).isEqualTo(View.VISIBLE)
+    }
+
+    // The limits are measured against the profile named in the settings, so run after run stays within
+    // autosens min/max of a profile the user checked, instead of each run moving the bar a little further.
+    @Test fun `the reference profile from the settings is handed to the core for the limits`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        whenever(preferences.get(StringKey.AutotuneReferenceProfile)).thenReturn(TESTPROFILENAME)
+
+        runOneTunedDay(autoSwitch = false)
+
+        val captor = argumentCaptor<ATProfile>()
+        verify(autotuneCore).tuneAllTheThings(any(), any(), captor.capture())
+        assertThat(captor.firstValue.profileName).isEqualTo(TESTPROFILENAME)
+    }
+
+    // A name that is not in the store must not stop the run: the limits then follow the tuned profile, as before.
+    // But the user set up a protection that is not there, so they are told.
+    @Test fun `an unknown reference profile falls back to the tuned profile for the limits and tells the user`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        whenever(preferences.get(StringKey.AutotuneReferenceProfile)).thenReturn("NoSuchProfile")
+
+        runOneTunedDay(autoSwitch = false)
+
+        val captor = argumentCaptor<ATProfile>()
+        verify(autotuneCore).tuneAllTheThings(any(), any(), captor.capture())
+        assertThat(captor.firstValue.profileName).isEqualTo("NotInStore")
+        verifyPosted(NotificationId.AUTOTUNE_REFERENCE_PROFILE_UNUSABLE, "Unusable reference")
+    }
+
+    // The tuned profile is overwritten by every auto switch, so as a reference it would move along and protect
+    // nothing. It is refused like a missing one.
+    @Test fun `the tuned profile itself is refused as reference`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        whenever(preferences.get(StringKey.AutotuneReferenceProfile)).thenReturn(TESTPROFILENAME)
+
+        autotunePlugin.aapsAutotune(daysBack = 1, autoSwitch = false, profileToTune = TESTPROFILENAME, weekDays = noDays)
+
+        verifyPosted(NotificationId.AUTOTUNE_REFERENCE_PROFILE_UNUSABLE, "Unusable reference")
+    }
+
+    // No reference set: nothing to tell.
+    @Test fun `no reference profile is not an error`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+
+        runOneTunedDay(autoSwitch = false)
+
+        verifyPosted(NotificationId.AUTOTUNE_REFERENCE_PROFILE_UNUSABLE, "Unusable reference", never())
+    }
+
+    // An unattended switch that doubles the daily basal is exactly what the guard is for: nothing is stored or
+    // switched, the user is told, and the button to apply the result by hand comes back.
+    @Test fun `auto switch is skipped when the total basal moves beyond the limit`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        whenever(preferences.get(IntKey.AutotuneAutoSwitchMaxBasalChange)).thenReturn(20)
+        whenever(rh.gs(eq(R.string.autotune_auto_switch_skipped), any(), any(), any(), any(), any())).thenReturn("Skipped")
+
+        runOneTunedDay(autoSwitch = true, basalFactor = 2.0)
+
+        verify(profileFunction, never()).createProfileSwitch(
+            anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()
+        )
+        verify(profileRepository, never()).add(any())
+        assertThat(autotunePlugin.result).isEqualTo("Skipped")
+        assertThat(autotunePlugin.updateButtonVisibility).isEqualTo(View.VISIBLE)
+        verifyPosted(NotificationId.AUTOTUNE_AUTO_SWITCH_SKIPPED, "Skipped")
+    }
+
+    // With a reference set, the core pulls the result into the band of the reference at once. A result that is
+    // fine next to the reference can still be a big step from the profile in force, and that step is limited too.
+    @Test fun `auto switch is skipped when the step from the profile in force is beyond the limit`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        val inForce = inForceProfileScaledBy(2.0) // built before the stub: its constructor touches another mock
+        whenever(profileFunction.getProfile()).thenReturn(inForce)
+        whenever(preferences.get(StringKey.AutotuneReferenceProfile)).thenReturn(TESTPROFILENAME)
+        whenever(preferences.get(IntKey.AutotuneAutoSwitchMaxBasalChange)).thenReturn(20)
+        whenever(rh.gs(eq(R.string.autotune_auto_switch_skipped), any(), any(), any(), any(), any())).thenReturn("Skipped")
+
+        // The result equals the reference (0 % drift) but is half of what is in force (-50 % step).
+        runOneTunedDay(autoSwitch = true, basalFactor = 1.0)
+
+        verify(profileFunction, never()).createProfileSwitch(
+            anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()
+        )
+        assertThat(autotunePlugin.result).isEqualTo("Skipped")
+    }
+
+    // Counterpart: a result inside the limit is switched as before.
+    @Test fun `auto switch goes ahead when the total basal stays within the limit`() = runBlocking {
+        whenever(profileFunction.getRunningOrRequestedICfg()).thenReturn(inForceICfg)
+        whenever(preferences.get(IntKey.AutotuneAutoSwitchMaxBasalChange)).thenReturn(20)
+
+        runOneTunedDay(autoSwitch = true, basalFactor = 1.1)
+
+        verify(profileFunction).createProfileSwitch(
+            anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()
+        )
     }
 }

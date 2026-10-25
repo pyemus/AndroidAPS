@@ -20,10 +20,10 @@ class AutotuneCore(
     private val autotuneFS: AutotuneFS
 ) {
 
-    fun tuneAllTheThings(preppedGlucose: PreppedGlucose, previousAutotune: ATProfile, pumpProfile: ATProfile): ATProfile {
-        //var pumpBasalProfile = pumpProfile.basalprofile;
-        val pumpBasalProfile = pumpProfile.basal
-        //console.error(pumpBasalProfile);
+    fun tuneAllTheThings(preppedGlucose: PreppedGlucose, previousAutotune: ATProfile, referenceProfile: ATProfile): ATProfile {
+        //var referenceBasalProfile = referenceProfile.basalprofile;
+        val referenceBasalProfile = referenceProfile.basal
+        //console.error(referenceBasalProfile);
         var basalProfile = previousAutotune.basal
         //console.error(basalProfile);
         //console.error(isfProfile);
@@ -40,9 +40,9 @@ class AutotuneCore(
         val crData = preppedGlucose.crData
         val diaDeviations = preppedGlucose.diaDeviations
         val peakDeviations = preppedGlucose.peakDeviations
-        val pumpISF = pumpProfile.isf
-        val pumpCarbRatio = pumpProfile.ic
-        val pumpCSF = pumpISF / pumpCarbRatio
+        val referenceISF = referenceProfile.isf
+        val referenceCarbRatio = referenceProfile.ic
+        val referenceCSF = referenceISF / referenceCarbRatio
         // Autosens constraints
         val autotuneMax = preferences.get(DoubleKey.AutosensMax)
         val autotuneMin = preferences.get(DoubleKey.AutosensMin)
@@ -235,15 +235,15 @@ class AutotuneCore(
         for (hour in 0..23) {
             //log.debug(newHourlyBasalProfile[hour],hourlyPumpProfile[hour].rate*1.2);
             // cap adjustments at autosens_max and autosens_min
-            val maxRate = pumpBasalProfile[hour] * autotuneMax
-            val minRate = pumpBasalProfile[hour] * autotuneMin
+            val maxRate = referenceBasalProfile[hour] * autotuneMax
+            val minRate = referenceBasalProfile[hour] * autotuneMin
             if (newHourlyBasalProfile[hour] > maxRate) {
-                log("Limiting hour " + hour + " basal to " + Round.roundTo(maxRate, 0.01) + " (which is " + Round.roundTo(autotuneMax, 0.01) + " * pump basal of " + pumpBasalProfile[hour] + ")")
-                //log.debug("Limiting hour",hour,"basal to",maxRate.toFixed(2),"(which is 20% above pump basal of",hourlyPumpProfile[hour].rate,")");
+                log("Limiting hour " + hour + " basal to " + Round.roundTo(maxRate, 0.01) + " (which is " + Round.roundTo(autotuneMax, 0.01) + " * reference basal of " + referenceBasalProfile[hour] + ")")
+                //log.debug("Limiting hour",hour,"basal to",maxRate.toFixed(2),"(which is 20% above reference basal of",hourlyPumpProfile[hour].rate,")");
                 newHourlyBasalProfile[hour] = maxRate
             } else if (newHourlyBasalProfile[hour] < minRate) {
-                log("Limiting hour " + hour + " basal to " + Round.roundTo(minRate, 0.01) + " (which is " + autotuneMin + " * pump basal of " + newHourlyBasalProfile[hour] + ")")
-                //log.debug("Limiting hour",hour,"basal to",minRate.toFixed(2),"(which is 20% below pump basal of",hourlyPumpProfile[hour].rate,")");
+                log("Limiting hour " + hour + " basal to " + Round.roundTo(minRate, 0.01) + " (which is " + autotuneMin + " * reference basal of " + referenceBasalProfile[hour] + ")")
+                //log.debug("Limiting hour",hour,"basal to",minRate.toFixed(2),"(which is 20% below reference basal of",hourlyPumpProfile[hour].rate,")");
                 newHourlyBasalProfile[hour] = minRate
             }
             newHourlyBasalProfile[hour] = Round.roundTo(newHourlyBasalProfile[hour], 0.001)
@@ -331,16 +331,16 @@ class AutotuneCore(
         // only adjust by 20%
         var newCSF = 0.8 * csf + 0.2 * fullNewCSF
         // safety cap csf
-        if (pumpCSF != 0.0) {
-            val maxCSF = pumpCSF * autotuneMax
-            val minCSF = pumpCSF * autotuneMin
+        if (referenceCSF != 0.0) {
+            val maxCSF = referenceCSF * autotuneMax
+            val minCSF = referenceCSF * autotuneMin
             if (newCSF > maxCSF) {
-                log("Limiting csf to " + Round.roundTo(maxCSF, 0.01) + " (which is " + autotuneMax + "* pump csf of " + pumpCSF + ")")
+                log("Limiting csf to " + Round.roundTo(maxCSF, 0.01) + " (which is " + autotuneMax + "* reference csf of " + referenceCSF + ")")
                 newCSF = maxCSF
             } else if (newCSF < minCSF) {
-                log("Limiting csf to " + Round.roundTo(minCSF, 0.01) + " (which is" + autotuneMin + "* pump csf of " + pumpCSF + ")")
+                log("Limiting csf to " + Round.roundTo(minCSF, 0.01) + " (which is" + autotuneMin + "* reference csf of " + referenceCSF + ")")
                 newCSF = minCSF
-            } //else { log.debug("newCSF",newCSF,"is close enough to",pumpCSF); }
+            } //else { log.debug("newCSF",newCSF,"is close enough to",referenceCSF); }
         }
         val oldCSF = Round.roundTo(csf, 0.001)
         newCSF = Round.roundTo(newCSF, 0.001)
@@ -359,35 +359,35 @@ class AutotuneCore(
             totalCR
         }
         // don't tune CR out of bounds
-        var maxCR = pumpCarbRatio * autotuneMax
+        var maxCR = referenceCarbRatio * autotuneMax
         if (maxCR > 150) {
             maxCR = 150.0
         }
-        var minCR = pumpCarbRatio * autotuneMin
+        var minCR = referenceCarbRatio * autotuneMin
         if (minCR < 3) {
             minCR = 3.0
         }
         // safety cap fullNewCR
-        if (pumpCarbRatio != 0.0) {
+        if (referenceCarbRatio != 0.0) {
             if (fullNewCR > maxCR) {
-                log("Limiting fullNewCR from " + fullNewCR + " to " + Round.roundTo(maxCR, 0.01) + " (which is " + autotuneMax + " * pump CR of " + pumpCarbRatio + ")")
+                log("Limiting fullNewCR from " + fullNewCR + " to " + Round.roundTo(maxCR, 0.01) + " (which is " + autotuneMax + " * reference CR of " + referenceCarbRatio + ")")
                 fullNewCR = maxCR
             } else if (fullNewCR < minCR) {
-                log("Limiting fullNewCR from " + fullNewCR + " to " + Round.roundTo(minCR, 0.01) + " (which is " + autotuneMin + " * pump CR of " + pumpCarbRatio + ")")
+                log("Limiting fullNewCR from " + fullNewCR + " to " + Round.roundTo(minCR, 0.01) + " (which is " + autotuneMin + " * reference CR of " + referenceCarbRatio + ")")
                 fullNewCR = minCR
-            } //else { log.debug("newCR",newCR,"is close enough to",pumpCarbRatio); }
+            } //else { log.debug("newCR",newCR,"is close enough to",referenceCarbRatio); }
         }
         // only adjust by 20%
         var newCR = 0.8 * carbRatio + 0.2 * fullNewCR
         // safety cap newCR
-        if (pumpCarbRatio != 0.0) {
+        if (referenceCarbRatio != 0.0) {
             if (newCR > maxCR) {
-                log("Limiting CR to " + Round.roundTo(maxCR, 0.01) + " (which is " + autotuneMax + " * pump CR of " + pumpCarbRatio + ")")
+                log("Limiting CR to " + Round.roundTo(maxCR, 0.01) + " (which is " + autotuneMax + " * reference CR of " + referenceCarbRatio + ")")
                 newCR = maxCR
             } else if (newCR < minCR) {
-                log("Limiting CR to " + Round.roundTo(minCR, 0.01) + " (which is " + autotuneMin + " * pump CR of " + pumpCarbRatio + ")")
+                log("Limiting CR to " + Round.roundTo(minCR, 0.01) + " (which is " + autotuneMin + " * reference CR of " + referenceCarbRatio + ")")
                 newCR = minCR
-            } //else { log.debug("newCR",newCR,"is close enough to",pumpCarbRatio); }
+            } //else { log.debug("newCR",newCR,"is close enough to",referenceCarbRatio); }
         }
         newCR = Round.roundTo(newCR, 0.001)
         log("oldCR: $carbRatio fullNewCR: $fullNewCR newCR: $newCR")
@@ -432,44 +432,44 @@ class AutotuneCore(
             fullNewISF = isf * p50ratios
         }
         fullNewISF = Round.roundTo(fullNewISF, 0.001)
-        // adjust the target isf to be a weighted average of fullNewISF and pumpISF
+        // adjust the target isf to be a weighted average of fullNewISF and referenceISF
         /*
         // TODO: philoul may be allow adjustmentFraction in settings with safety limits ?)
-        if (typeof(pumpProfile.autotune_isf_adjustmentFraction) !== 'undefined') {
-            adjustmentFraction = pumpProfile.autotune_isf_adjustmentFraction;
+        if (typeof(referenceProfile.autotune_isf_adjustmentFraction) !== 'undefined') {
+            adjustmentFraction = referenceProfile.autotune_isf_adjustmentFraction;
         } else {*/
         val adjustmentFraction = 1.0
         //        }
 
         // low autosens ratio = high isf
-        val maxISF = pumpISF / autotuneMin
+        val maxISF = referenceISF / autotuneMin
         // high autosens ratio = low isf
-        val minISF = pumpISF / autotuneMax
+        val minISF = referenceISF / autotuneMax
         var adjustedISF = 0.0
         var newISF = 0.0
-        if (pumpISF != 0.0) {
+        if (referenceISF != 0.0) {
             adjustedISF = if (fullNewISF < 0) {
                 isf
             } else {
-                adjustmentFraction * fullNewISF + (1 - adjustmentFraction) * pumpISF
+                adjustmentFraction * fullNewISF + (1 - adjustmentFraction) * referenceISF
             }
             // cap adjustedISF before applying 10%
             //log.debug(adjustedISF, maxISF, minISF);
             if (adjustedISF > maxISF) {
-                log("Limiting adjusted isf of " + Round.roundTo(adjustedISF, 0.01) + " to " + Round.roundTo(maxISF, 0.01) + "(which is pump isf of " + pumpISF + "/" + autotuneMin + ")")
+                log("Limiting adjusted isf of " + Round.roundTo(adjustedISF, 0.01) + " to " + Round.roundTo(maxISF, 0.01) + "(which is reference isf of " + referenceISF + "/" + autotuneMin + ")")
                 adjustedISF = maxISF
             } else if (adjustedISF < minISF) {
-                log("Limiting adjusted isf of" + Round.roundTo(adjustedISF, 0.01) + " to " + Round.roundTo(minISF, 0.01) + "(which is pump isf of " + pumpISF + "/" + autotuneMax + ")")
+                log("Limiting adjusted isf of" + Round.roundTo(adjustedISF, 0.01) + " to " + Round.roundTo(minISF, 0.01) + "(which is reference isf of " + referenceISF + "/" + autotuneMax + ")")
                 adjustedISF = minISF
             }
 
             // and apply 20% of that adjustment
             newISF = 0.8 * isf + 0.2 * adjustedISF
             if (newISF > maxISF) {
-                log("Limiting isf of" + Round.roundTo(newISF, 0.01) + "to" + Round.roundTo(maxISF, 0.01) + "(which is pump isf of" + pumpISF + "/" + autotuneMin + ")")
+                log("Limiting isf of" + Round.roundTo(newISF, 0.01) + "to" + Round.roundTo(maxISF, 0.01) + "(which is reference isf of" + referenceISF + "/" + autotuneMin + ")")
                 newISF = maxISF
             } else if (newISF < minISF) {
-                log("Limiting isf of" + Round.roundTo(newISF, 0.01) + "to" + Round.roundTo(minISF, 0.01) + "(which is pump isf of" + pumpISF + "/" + autotuneMax + ")")
+                log("Limiting isf of" + Round.roundTo(newISF, 0.01) + "to" + Round.roundTo(minISF, 0.01) + "(which is reference isf of" + referenceISF + "/" + autotuneMax + ")")
                 newISF = minISF
             }
         }

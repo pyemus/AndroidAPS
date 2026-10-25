@@ -16,6 +16,7 @@ import app.aaps.core.interfaces.configuration.ExternalOptions
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.logging.UserEntryLogger
+import app.aaps.core.interfaces.notifications.NotificationId
 import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.plugin.EnforcedState
 import app.aaps.core.interfaces.plugin.PluginBase
@@ -32,10 +33,13 @@ import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.MidnightTime
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.IntKey
+import app.aaps.core.keys.KeysStrings
 import app.aaps.core.keys.StringKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.keys.interfaces.TextRef
+import app.aaps.core.keys.interfaces.withEntriesProvider
 import app.aaps.core.objects.extensions.blockFromJson
+import app.aaps.core.objects.extensions.profileNames
 import app.aaps.core.objects.extensions.pureProfileFromJson
 import app.aaps.core.objects.profile.ProfileSealed
 import app.aaps.core.ui.compose.icons.IcPluginAutotune
@@ -67,6 +71,8 @@ import kotlinx.serialization.json.put
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.TimeZone
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import dev.zacsweers.metro.IntKey as MetroIntKey
 
 /*
@@ -217,6 +223,23 @@ class AutotunePlugin(
             it.profileName = selectedProfile
         }
         autotuneFS.exportPumpProfile(pumpProfile)
+        // The limits (autosens min/max) are measured against a reference profile the user checked by hand, so a
+        // run that is auto switched cannot walk the profile a little further every time. Without one, the limits
+        // follow the tuned profile itself, as before. The tuned profile itself is no reference: an auto switch
+        // overwrites it, so the limits would move with it.
+        val referenceName = preferences.get(StringKey.AutotuneReferenceProfile)
+        val referenceProfile = profileStore.getSpecificProfile(referenceName)
+            ?.takeIf { referenceName != selectedProfile }
+            ?.let { pure -> atProfileProvider().with(ProfileSealed.Pure(value = pure, activePlugin = null), iCfg).also { it.profileName = referenceName } }
+            ?.takeIf { it.isValid }
+            ?: pumpProfile
+        if (referenceName.isNotEmpty() && referenceProfile === pumpProfile) {
+            // The user believes the limits are anchored, so a line in the Autotune log is not enough.
+            val message = rh.gs(R.string.autotune_reference_profile_unusable, referenceName, selectedProfile)
+            log(message)
+            notificationManager.post(NotificationId.AUTOTUNE_REFERENCE_PROFILE_UNUSABLE, message)
+        }
+        log("Reference profile for limits: ${referenceProfile.profileName}")
 
         if (calcDays == 0) {
             result = rh.gs(R.string.autotune_error_more_days)
@@ -252,7 +275,7 @@ class AutotunePlugin(
                     preppedGlucose = autotunePrep.categorize(it) //<=> autotune.yyyymmdd.json files exported for results compare with oref0 autotune on virtual machine
                     preppedGlucose?.let { preppedGlucose ->         //preppedGlucose and tunedProfile should never be null here
                         autotuneFS.exportPreppedGlucose(preppedGlucose)
-                        tunedProfile = autotuneCore.tuneAllTheThings(preppedGlucose, it, pumpProfile).also { tunedProfile ->
+                        tunedProfile = autotuneCore.tuneAllTheThings(preppedGlucose, it, referenceProfile).also { tunedProfile ->
                             autotuneFS.exportTunedProfile(tunedProfile)   //<=> newprofile.yyyymmdd.json files exported for results compare with oref0 autotune on virtual machine
                             if (currentCalcDay < calcDays) {
                                 log("Partial result for day ${i + 1}".trimIndent())
@@ -289,7 +312,28 @@ class AutotunePlugin(
 
         if (autoSwitch) {
             val circadian = preferences.get(BooleanKey.AutotuneCircadianIcIsf)
-            tunedProfile?.let { tunedP ->
+            tunedProfile?.let tuned@{ tunedP ->
+                // Two limits with the same number: the drift from the reference, and the step from the profile
+                // that is in force now. The second one matters on the first run after a reference is set: the
+                // core pulls every hour into the band of the reference at once, which can be a big step.
+                val drift = basalDriftBeyondLimit(tunedP, referenceProfile)
+                    ?: pumpProfile.takeIf { it !== referenceProfile }?.let { basalDriftBeyondLimit(tunedP, it) }
+                if (drift != null) {
+                    // Nothing is stored or switched: the result stays on the Autotune tab for a manual check,
+                    // and the button to apply it stays visible, like the skipped switch below.
+                    val reason = rh.gs(
+                        R.string.autotune_auto_switch_skipped,
+                        rh.gs(app.aaps.core.ui.R.string.format_insulin_units1, drift.totalTuned),
+                        drift.against.profileName,
+                        rh.gs(app.aaps.core.ui.R.string.format_insulin_units1, drift.totalAgainst),
+                        drift.changePercent,
+                        drift.limit
+                    )
+                    log("Profile Switch skipped: $reason")
+                    result = reason
+                    notificationManager.post(NotificationId.AUTOTUNE_AUTO_SWITCH_SKIPPED, reason)
+                    return@tuned
+                }
                 tunedP.profileName = pumpProfile.profileName
                 updateProfile(tunedP)
                 uel.log(
@@ -348,6 +392,24 @@ class AutotunePlugin(
         rxBus.send(EventAutotuneUpdateGui())
         calculationRunning = false
         return
+    }
+
+    /** Total daily basal of a result next to the profile it was compared with, in U and whole percent. */
+    private class BasalDrift(val totalTuned: Double, val against: ATProfile, val totalAgainst: Double, val changePercent: Int, val limit: Int)
+
+    /**
+     * The drift when an unattended switch to [tuned] must not happen, or null when it may. The total daily
+     * basal of the result may differ from the profile it is compared [against] by at most the user's limit.
+     * Beyond that the result is only kept, so a change this big needs a human look before it reaches the pump.
+     */
+    private fun basalDriftBeyondLimit(tuned: ATProfile, against: ATProfile): BasalDrift? {
+        val limit = preferences.get(IntKey.AutotuneAutoSwitchMaxBasalChange)
+        val totalTuned = tuned.basal.sum()
+        val totalAgainst = against.basal.sum()
+        if (totalAgainst <= 0.0) return null
+        val changePercent = abs(totalTuned / totalAgainst - 1.0) * 100.0
+        if (changePercent <= limit) return null
+        return BasalDrift(totalTuned, against, totalAgainst, changePercent.roundToInt(), limit)
     }
 
     private fun showResults(tunedProfile: ATProfile?, pumpProfile: ATProfile): String {
@@ -553,12 +615,17 @@ class AutotunePlugin(
         titleResId = app.aaps.core.ui.R.string.autotune,
         items = listOf(
             BooleanKey.AutotuneAutoSwitchProfile,
+            StringKey.AutotuneReferenceProfile.withEntriesProvider(provider = { referenceProfileEntries() }),
+            IntKey.AutotuneAutoSwitchMaxBasalChange,
             BooleanKey.AutotuneCategorizeUamAsBasal,
             IntKey.AutotuneDefaultTuneDays,
             BooleanKey.AutotuneCircadianIcIsf
-
         ),
         icon = pluginDescription.icon
     )
 
+    /** "Not set" first, then every stored profile by name. */
+    private fun referenceProfileEntries(): Map<String, TextRef> =
+        mapOf("" to KeysStrings.pref_entry_autotune_reference_profile_none) +
+            profileRepository.profileNames().associateWith { TextRef.Literal(it) }
 }
