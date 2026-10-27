@@ -28,6 +28,7 @@ import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.wear.R
+import app.aaps.wear.alarm.WatchAlarmController
 import app.aaps.wear.complications.BgGraphComplication
 import app.aaps.wear.complications.BgRangedComplication
 import app.aaps.wear.complications.BrCobIobComplication
@@ -93,7 +94,8 @@ class DataHandlerWear(
     private val preferences: Preferences,
     private val aapsLogger: AAPSLogger,
     private val complicationDataRepository: ComplicationDataRepository,
-    private val watchFacePushHelper: WatchFacePushHelper
+    private val watchFacePushHelper: WatchFacePushHelper,
+    private val watchAlarmController: WatchAlarmController
 ) {
 
     // Coroutine scope for DataStore operations
@@ -179,6 +181,18 @@ class DataHandlerWear(
             (context.getSystemService(WearableListenerService.NOTIFICATION_SERVICE) as NotificationManager).cancel(DataLayerListenerServiceWear.CHANGE_NOTIF_ID)
         }
         onEvent<EventData.OpenLoopRequest> { handleOpenLoopRequest(it) }
+        onEvent<EventData.WatchAlarm>(detail = { " id=${it.id} duration=${it.durationSeconds}s" }) { command ->
+            // RECEIVED first: it only says the message arrived. Whether the alarm could start is a
+            // separate answer, so the phone can tell "watch unreachable" from "watch cannot ring".
+            rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.RECEIVED)))
+            val started = try {
+                watchAlarmController.start(command.id, command.text, command.durationSeconds)
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.WEAR, "Watch alarm ${command.id} could not start", e)
+                false
+            }
+            if (!started) rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.FAILED)))
+        }
         onEvent<EventData.OpenSettings> {
             // The Display screen holds the settings of the code-based faces. With the complications
             // face installed through Watch Face Push nothing there is the wearer's, so the phone's

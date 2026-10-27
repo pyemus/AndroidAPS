@@ -43,6 +43,7 @@ import app.aaps.plugins.automation.actions.ActionSmoothingChange
 import app.aaps.plugins.automation.actions.ActionStartTempTarget
 import app.aaps.plugins.automation.actions.ActionStopProcessing
 import app.aaps.plugins.automation.actions.ActionStopTempTarget
+import app.aaps.plugins.automation.actions.ActionWatchAlarm
 import app.aaps.plugins.automation.compose.iconColor
 import kotlin.reflect.KClass
 
@@ -73,6 +74,7 @@ private fun actionCategoryOf(cls: KClass<*>): ActionCategory = when (cls) {
     ActionDisableScene::class -> ActionCategory.Scenes
 
     ActionAlarm::class,
+    ActionWatchAlarm::class,
     ActionNotification::class,
     ActionSendSMS::class,
     ActionCarePortalEvent::class -> ActionCategory.Alerts

@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Watch alarm (automation "Alarm on watch"). USE_FULL_SCREEN_INTENT is install-granted at
+         targetSdk 30; SCHEDULE_EXACT_ALARM is not needed before targetSdk 31 but is declared now so a
+         later target bump does not silently lose the screen wake. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="com.google.android.wearable.permission.RECEIVE_COMPLICATION_DATA" />
@@ -1181,6 +1186,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Alarm screen raised by the phone's automation "Alarm on watch". Shown over the lock screen. -->
+        <activity
+            android:name=".alarm.WatchAlarmActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/WearAppCompatDark"
+            android:turnScreenOn="true" />
+        <receiver
+            android:name=".alarm.WatchAlarmScreenWakeReceiver"
+            android:exported="false" />
 
     </application>
 </manifest>

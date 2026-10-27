@@ -45,6 +45,10 @@
     <string name="alarm_short">Alarm:</string>
     <string name="message_short">Msg:</string>
     <string name="notification_message">Notification: %1$s</string>
+    <string name="watch_alarm">Alarm on watch</string>
+    <string name="watch_alarm_message" comment="%1$s=the alarm text. The part before the colon is the action name shown in the chooser. Example: Alarm on watch: Low BG">Alarm on watch: %1$s</string>
+    <string name="watch_alarm_text">Text shown on the watch</string>
+    <string name="watch_alarm_duration">Vibrate for</string>
     <string name="profilename">Change profile to</string>
     <string name="changengetoprofilename">Change profile to %1$s</string>
     <string name="automation_trigger_pump_last_connection_label">Last connection to pump</string>

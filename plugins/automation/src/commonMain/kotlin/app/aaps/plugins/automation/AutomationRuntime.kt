@@ -790,6 +790,10 @@ class AutomationRuntime(
         // cannot be scheduled at all.
         if (config.isEngineeringMode() && config.isDev() || config.isEnabled(ExternalOptions.ENABLE_AUTOTUNE))
             actions.add(actionFactory.actionRunAutotune())
+        // The watch alarm needs a wear data layer. Where there is none (iOS, desktop) the action is
+        // not offered at all, so the feature is visibly absent instead of present and silent.
+        if (actionFactory.watchAlarmAvailable())
+            actions.add(actionFactory.actionWatchAlarm())
 
         return actions.toList()
     }

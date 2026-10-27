@@ -1,5 +1,6 @@
 package app.aaps.desktop.shell.platform
 
+import app.aaps.core.interfaces.alerts.WatchAlarm
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.AlarmSound
@@ -50,6 +51,27 @@ class DesktopSmsCommunicator(
     override fun sendNotificationToAllNumbers(text: String): Boolean {
         aapsLogger.error(LTag.SMS, "Desktop cannot send SMS")
         return false
+    }
+}
+
+/**
+ * No watch alarm on a desktop, because there is no watch.
+ *
+ * [isAvailable] answering false keeps the automation chooser from offering the action, and makes a
+ * synced rule that carries it invalid rather than silently inert. [raise] logs at error: an alarm
+ * that nobody hears is a user-facing loss, not a cosmetic one.
+ */
+@ContributesBinding(AppScope::class)
+@SingleIn(AppScope::class)
+@Inject
+class DesktopWatchAlarm(
+    private val aapsLogger: AAPSLogger
+) : WatchAlarm {
+
+    override val isAvailable: Boolean = false
+
+    override fun raise(text: String, durationSeconds: Int) {
+        aapsLogger.error(LTag.WEAR, "Desktop has no watch alarm, alarm \"$text\" dropped")
     }
 }
 

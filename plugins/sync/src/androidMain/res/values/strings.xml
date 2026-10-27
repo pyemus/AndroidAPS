@@ -279,4 +279,6 @@
     <string name="permission_sms_title">SMS</string>
     <string name="permission_sms_description">Application needs SMS permission for remote control via text messages</string>
 
+    <string name="watch_alarm_fallback_title">Watch alarm not confirmed</string>
+    <string name="watch_alarm_fallback_status" comment="%1$s=the alarm text from the automation rule. Example: Low BG (the watch did not confirm)">%1$s (the watch did not confirm)</string>
 </resources>

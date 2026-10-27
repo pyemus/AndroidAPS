@@ -21,6 +21,7 @@ import app.aaps.core.interfaces.rx.weardata.EventData
 import app.aaps.core.interfaces.sharedPreferences.SP
 import app.aaps.shared.impl.weardata.ZipWatchfaceFormat
 import app.aaps.wear.R
+import app.aaps.wear.alarm.WatchAlarmController
 import app.aaps.wear.events.EventWearPreferenceChange
 import app.aaps.wear.heartrate.HeartRateListener
 import app.aaps.wear.interaction.ConfigurationActivity
@@ -56,6 +57,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
     @Inject lateinit var rxBus: RxBus
     @Inject lateinit var aapsSchedulers: AapsSchedulers
     @Inject lateinit var watchFacePushHelper: WatchFacePushHelper
+    @Inject lateinit var watchAlarmController: WatchAlarmController
 
     private val dataClient by lazy { Wearable.getDataClient(this) }
     private val messageClient by lazy { Wearable.getMessageClient(this) }
@@ -165,6 +167,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
                 sendMessage(rxPath, data, notifyOnFailure = data != null && EventData.deserialize(data).isUserAction())
             }
             INTENT_CANCEL_NOTIFICATION -> (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(CHANGE_NOTIF_ID)
+            INTENT_DISMISS_WATCH_ALARM -> watchAlarmController.dismiss()
         }
         return START_STICKY
     }
@@ -295,6 +298,9 @@ class DataLayerListenerServiceWear : WearableListenerService() {
         is EventData.ActionSceneStopPreCheck, is EventData.ActionSceneStopConfirmed, is EventData.OpenLoopRequestConfirmed,
         is EventData.CancelBolus, is EventData.SnoozeAlert -> true
 
+        // Dismiss is a tap, and a lost DISMISSED means the phone will ring. The other acks are background.
+        is EventData.WatchAlarmAck -> state == EventData.WatchAlarmAck.State.DISMISSED
+
         else -> false
     }
 
@@ -320,6 +326,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
         val INTENT_CANCEL_BOLUS = DataLayerListenerServiceWear::class.java.name + ".CancelBolus"
         val INTENT_WEAR_TO_MOBILE = DataLayerListenerServiceWear::class.java.name + ".WearToMobile"
         val INTENT_CANCEL_NOTIFICATION = DataLayerListenerServiceWear::class.java.name + ".CancelNotification"
+        val INTENT_DISMISS_WATCH_ALARM = DataLayerListenerServiceWear::class.java.name + ".DismissWatchAlarm"
 
         //data keys
         const val KEY_ACTION_DATA = "actionData"
@@ -337,6 +344,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
         const val BOLUS_PROGRESS_NOTIF_ID = 1
         const val CONFIRM_NOTIF_ID = 2
         const val FOREGROUND_NOTIF_ID = 3
+        const val WATCH_ALARM_NOTIF_ID = 4
         const val CHANGE_NOTIF_ID = 556677
 
         // Do not change the ID: Android keeps the user's channel settings by ID. The name shown is set

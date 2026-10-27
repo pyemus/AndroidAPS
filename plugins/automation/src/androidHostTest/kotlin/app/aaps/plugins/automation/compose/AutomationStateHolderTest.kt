@@ -36,7 +36,7 @@ class AutomationStateHolderTest : TestBase() {
         val actionFactory = ActionFactory(
             triggerDeps, aapsLogger, rh, pumpEnactResultProvider, mock(), dateUtil, mock(), mock(), mock(),
             profileFunction, mock(), mock(), mock(), mock(), mock(), preferences, mock(), mock(), mock(), mock(),
-            mock(), mock(), mock()
+            mock(), mock(), mock(), mock()
         )
         AutomationEventFactory(aapsLogger, dateUtil, actionFactory, TriggerFactory(triggerDeps, mock(), mock(), mock()), triggerDeps)
     }

@@ -1,6 +1,7 @@
 package app.aaps.plugins.automation.actions
 
 import app.aaps.core.interfaces.alerts.ReminderScheduler
+import app.aaps.core.interfaces.alerts.WatchAlarm
 import app.aaps.core.interfaces.autotune.Autotune
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.configuration.ConfigBuilder
@@ -60,7 +61,8 @@ class ActionFactory(
     private val autotunePlugin: Autotune,
     private val importExportPrefs: ImportExportPrefs,
     private val exportPasswordDataStore: ExportPasswordDataStore,
-    private val configBuilder: ConfigBuilder
+    private val configBuilder: ConfigBuilder,
+    private val watchAlarm: WatchAlarm
 ) {
 
     /** A new, empty instance of every action type, for the "choose an action" list. */
@@ -68,8 +70,11 @@ class ActionFactory(
         actionAlarm(), actionCarePortalEvent(), actionDisableScene(), actionEnableScene(),
         actionNotification(), actionProfileSwitch(), actionProfileSwitchPercent(), actionRunAutotune(),
         actionRunScene(), actionSendSMS(), actionSettingsExport(), actionSMBChange(), actionSmoothingChange(),
-        actionStartTempTarget(), actionStopProcessing(), actionStopTempTarget()
+        actionStartTempTarget(), actionStopProcessing(), actionStopTempTarget(), actionWatchAlarm()
     )
+
+    /** Whether this platform can reach a watch at all; the chooser offers [ActionWatchAlarm] only then. */
+    fun watchAlarmAvailable(): Boolean = watchAlarm.isAvailable
 
     fun actionAlarm() = ActionAlarm(aapsLogger, rh, pumpEnactResultProvider, rxBus, dateUtil, reminderScheduler, config)
     fun actionAlarm(text: String) = ActionAlarm(aapsLogger, rh, pumpEnactResultProvider, rxBus, dateUtil, reminderScheduler, config, text)
@@ -94,6 +99,7 @@ class ActionFactory(
     fun actionStartTempTarget() = ActionStartTempTarget(aapsLogger, rh, pumpEnactResultProvider, activePlugin, persistenceLayer, profileFunction, dateUtil, profileUtil, triggerDeps)
     fun actionStopProcessing() = ActionStopProcessing(aapsLogger, rh, pumpEnactResultProvider)
     fun actionStopTempTarget() = ActionStopTempTarget(aapsLogger, rh, pumpEnactResultProvider, persistenceLayer, dateUtil)
+    fun actionWatchAlarm() = ActionWatchAlarm(aapsLogger, rh, pumpEnactResultProvider, watchAlarm)
 
     /**
      * A new, empty action of the given type. The name may be plain or fully qualified, because that is
@@ -118,6 +124,7 @@ class ActionFactory(
             ActionStartTempTarget::class.simpleName      -> actionStartTempTarget()
             ActionStopProcessing::class.simpleName       -> actionStopProcessing()
             ActionStopTempTarget::class.simpleName       -> actionStopTempTarget()
+            ActionWatchAlarm::class.simpleName           -> actionWatchAlarm()
             else                                             -> null
         }
 

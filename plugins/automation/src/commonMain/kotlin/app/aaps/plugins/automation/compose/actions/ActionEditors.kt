@@ -30,6 +30,7 @@ import app.aaps.plugins.automation.actions.ActionSendSMS
 import app.aaps.plugins.automation.actions.ActionSettingsExport
 import app.aaps.plugins.automation.actions.ActionSmoothingChange
 import app.aaps.plugins.automation.actions.ActionStartTempTarget
+import app.aaps.plugins.automation.actions.ActionWatchAlarm
 import app.aaps.plugins.automation.compose.elements.AutomationDropdown
 import app.aaps.plugins.automation.compose.elements.InputDropdownOnOffEditor
 import app.aaps.plugins.automation.compose.elements.InputStringEditor
@@ -63,6 +64,7 @@ fun ActionEditor(
     ) {
         when (action) {
             is ActionAlarm                -> ActionAlarmEditor(action, onChange)
+            is ActionWatchAlarm           -> ActionWatchAlarmEditor(action, tick, onChange)
             is ActionNotification         -> ActionNotificationEditor(action, onChange)
             is ActionSendSMS              -> ActionSendSMSEditor(action, onChange)
             is ActionSettingsExport       -> ActionSettingsExportEditor(action, onChange)
@@ -92,6 +94,24 @@ fun ActionAlarmEditor(a: ActionAlarm, onChange: () -> Unit) {
         value = a.text.value,
         onValueChange = { a.text.value = it; onChange() },
         label = stringResource(AutomationStrings.alarm_short)
+    )
+}
+
+@Composable
+fun ActionWatchAlarmEditor(a: ActionWatchAlarm, tick: Int = 0, onChange: () -> Unit) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    InputStringEditor(
+        value = a.text.value,
+        onValueChange = { a.text.value = it; onChange() },
+        label = stringResource(AutomationStrings.watch_alarm_text)
+    )
+    NumberInputRow(
+        labelRef = AutomationStrings.watch_alarm_duration,
+        value = a.durationSeconds.toDouble(),
+        onValueChange = { a.durationSeconds = it.toInt(); onChange() },
+        valueRange = ActionWatchAlarm.MIN_DURATION_SECONDS.toDouble()..ActionWatchAlarm.MAX_DURATION_SECONDS.toDouble(),
+        step = ActionWatchAlarm.DURATION_STEP_SECONDS.toDouble(),
+        unitLabel = CoreUiStrings.units_sec
     )
 }
 

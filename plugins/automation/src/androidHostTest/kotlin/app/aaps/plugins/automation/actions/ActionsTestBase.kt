@@ -2,6 +2,7 @@ package app.aaps.plugins.automation.actions
 
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.interfaces.alerts.ReminderScheduler
+import app.aaps.core.interfaces.alerts.WatchAlarm
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.autotune.Autotune
 import app.aaps.core.interfaces.configuration.ConfigBuilder
@@ -38,6 +39,7 @@ ActionsTestBase : TestBaseWithProfile() {
     @Mock lateinit var importExportPrefs: ImportExportPrefs
     @Mock lateinit var exportPasswordDataStore: ExportPasswordDataStore
     @Mock lateinit var configBuilder: ConfigBuilder
+    @Mock lateinit var watchAlarm: WatchAlarm
 
     /**
      * Real English for every name and description an action renders, so the expected text is what the
@@ -62,7 +64,7 @@ ActionsTestBase : TestBaseWithProfile() {
             triggerDeps, aapsLogger, text, { pumpEnactResultProvider() }, rxBus, dateUtil, mock<ReminderScheduler>(),
             config, persistenceLayer, profileFunction, profileRepository, profileUtil, glucoseStatusProvider,
             notificationManager, activePlugin, preferences, sceneApi, sceneIconResolver, smsCommunicator,
-            autotunePlugin, importExportPrefs, exportPasswordDataStore, configBuilder
+            autotunePlugin, importExportPrefs, exportPasswordDataStore, configBuilder, watchAlarm
         )
     }
 
@@ -72,6 +74,8 @@ ActionsTestBase : TestBaseWithProfile() {
         // base builds that with `baseText`, which knows only the five owners :shared:tests can see - an
         // automation string would not resolve. Same resolver as the actions, so the comment resolves too.
         pumpEnactResultProvider = { PumpEnactResultObject(text) }
+        // Android can reach a watch; the mock would otherwise make ActionWatchAlarm invalid.
+        whenever(watchAlarm.isAvailable).thenReturn(true)
         whenever(profileFunction.getUnits()).thenReturn(GlucoseUnit.MGDL)
         runBlocking {
             whenever(profileFunction.getProfile()).thenReturn(effectiveProfile)

@@ -2,6 +2,7 @@ package app.aaps.wear.di
 
 import app.aaps.core.interfaces.di.FeatureMemberInjectors
 import app.aaps.wear.WearApp
+import app.aaps.wear.alarm.WatchAlarmActivity
 import app.aaps.wear.comm.DataLayerListenerServiceWear
 import app.aaps.wear.complications.BgGraphComplication
 import app.aaps.wear.complications.BgRangedComplication
@@ -99,6 +100,12 @@ object WearMemberInjectors {
     @IntoMap
     @ClassKey(WearApp::class)
     fun bindWearApp(injector: MembersInjector<WearApp>): MembersInjector<*> = injector
+
+    @Provides
+    @FeatureMemberInjectors
+    @IntoMap
+    @ClassKey(WatchAlarmActivity::class)
+    fun bindWatchAlarmActivity(injector: MembersInjector<WatchAlarmActivity>): MembersInjector<*> = injector
 
     @Provides
     @FeatureMemberInjectors

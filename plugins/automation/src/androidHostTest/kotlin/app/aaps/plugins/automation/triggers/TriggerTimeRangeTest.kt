@@ -37,6 +37,16 @@ class TriggerTimeRangeTest : TriggerTestBase() {
     }
 
     @Test
+    fun midnightCrossingRangeTest() = runTest {
+        // 23:00 to 07:00 is stored as start > end; a night rule depends on this reading correctly.
+        val t = TriggerTimeRange(triggerDeps).period(23 * 60, 7 * 60)
+        for ((minutesSinceMidnight, expected) in listOf(23 * 60 + 20 to true, 5 * 60 to true, 12 * 60 + 34 to false, 7 * 60 + 10 to false, 22 * 60 + 50 to false)) {
+            whenever(dateUtil.now()).thenReturn(MidnightTime.calcMidnightPlusMinutes(minutesSinceMidnight))
+            assertThat(t.shouldRun()).isEqualTo(expected)
+        }
+    }
+
+    @Test
     fun toJSONTest() = runTest {
         val t: TriggerTimeRange = TriggerTimeRange(triggerDeps).period((now - 1).toInt(), (now + 30).toInt())
         JSONAssert.assertEquals(timeJson, t.toJSON(), true)

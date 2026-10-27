@@ -586,6 +586,27 @@ sealed class EventData : Event() {
     @Serializable
     data class SnoozeAlert(val timeStamp: Long) : EventData()
 
+    /**
+     * Mobile -> Wear: ring an alarm on the watch. [id] is the phone's send time and names the alarm in
+     * every [WatchAlarmAck]. The watch vibrates for [durationSeconds] or until the wearer dismisses it.
+     * An older watch does not know this type and drops it; the phone then rings itself after a timeout.
+     */
+    @Serializable
+    data class WatchAlarm(val id: Long, val text: String, val durationSeconds: Int) : EventData()
+
+    /**
+     * Wear -> Mobile: what the watch did with [WatchAlarm] number [id].
+     * RECEIVED is sent as soon as the message arrives, before the alarm starts. DISMISSED means the
+     * wearer pressed the button. TIMED_OUT means the alarm ran for its full time without a press.
+     * FAILED means the watch could not start the alarm at all, so the phone should ring instead.
+     */
+    @Serializable
+    data class WatchAlarmAck(val id: Long, val state: State) : EventData() {
+
+        @Serializable
+        enum class State { RECEIVED, DISMISSED, TIMED_OUT, FAILED }
+    }
+
     // Wear -> Wear (workaround)
     @Serializable
     data class RunningModePreSelect(

@@ -11,6 +11,7 @@ import app.aaps.shared.impl.rx.bus.RxBusImpl
 import app.aaps.wear.AAPSLoggerTest
 import app.aaps.wear.R
 import app.aaps.wear.WearTestBase
+import app.aaps.wear.alarm.WatchAlarmController
 import app.aaps.wear.data.ComplicationDataRepository
 import app.aaps.wear.watchfaces.WatchFacePushHelper
 import com.google.common.truth.Truth.assertThat
@@ -18,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -28,6 +30,8 @@ import org.mockito.Mockito.timeout
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyBlocking
+import org.mockito.kotlin.whenever
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Drives [DataHandlerWear]'s message handlers through a REAL [RxBusImpl]. Handlers run on the
@@ -40,6 +44,7 @@ internal class DataHandlerWearTest : WearTestBase() {
     @Mock lateinit var preferences: Preferences
     @Mock lateinit var complicationDataRepository: ComplicationDataRepository
     @Mock lateinit var watchFacePushHelper: WatchFacePushHelper
+    @Mock lateinit var watchAlarmController: WatchAlarmController
 
     private val logger = AAPSLoggerTest()
     private lateinit var rxBus: RxBus
@@ -48,7 +53,7 @@ internal class DataHandlerWearTest : WearTestBase() {
     @BeforeEach
     fun setupHandler() {
         rxBus = RxBusImpl(logger)
-        sut = DataHandlerWear(context, rxBus, sp, preferences, logger, complicationDataRepository, watchFacePushHelper)
+        sut = DataHandlerWear(context, rxBus, sp, preferences, logger, complicationDataRepository, watchFacePushHelper, watchAlarmController)
     }
 
     @Test
@@ -108,6 +113,46 @@ internal class DataHandlerWearTest : WearTestBase() {
         // Answered from the handler's IO dispatcher, so wait for it rather than reading a field.
         val answer = runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { pong.await() } }
         assertThat(answer).isNotNull()
+        collector.cancel()
+    }
+
+    /** Collects every ack the watch sends for an alarm. UNDISPATCHED: subscribed before the alarm is sent; RxBus has no replay. */
+    private fun collectAcks(): Pair<CopyOnWriteArrayList<EventData.WatchAlarmAck>, Job> {
+        val acks = CopyOnWriteArrayList<EventData.WatchAlarmAck>()
+        val collector = CoroutineScope(Dispatchers.Unconfined).launch(start = CoroutineStart.UNDISPATCHED) {
+            rxBus.toFlow(EventWearToMobile::class).collect { evt ->
+                (evt.payload as? EventData.WatchAlarmAck)?.let { acks += it }
+            }
+        }
+        return acks to collector
+    }
+
+    @Test
+    fun `a watch alarm is acknowledged as received and started`() {
+        whenever(watchAlarmController.start(7L, "Low", 90)).thenReturn(true)
+        val (acks, collector) = collectAcks()
+
+        rxBus.send(EventData.WatchAlarm(7L, "Low", 90))
+
+        verify(watchAlarmController, timeout(HANDLER_TIMEOUT_MS)).start(7L, "Low", 90)
+        assertThat(acks).containsExactly(EventData.WatchAlarmAck(7L, EventData.WatchAlarmAck.State.RECEIVED))
+        collector.cancel()
+    }
+
+    @Test
+    fun `a watch that cannot ring reports the failure after the receipt`() {
+        whenever(watchAlarmController.start(7L, "Low", 90)).thenReturn(false)
+        val failed = CompletableDeferred<EventData.WatchAlarmAck>()
+        val collector = CoroutineScope(Dispatchers.Unconfined).launch(start = CoroutineStart.UNDISPATCHED) {
+            rxBus.toFlow(EventWearToMobile::class).collect { evt ->
+                (evt.payload as? EventData.WatchAlarmAck)?.takeIf { it.state == EventData.WatchAlarmAck.State.FAILED }?.let { failed.complete(it) }
+            }
+        }
+
+        rxBus.send(EventData.WatchAlarm(7L, "Low", 90))
+
+        val answer = runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { failed.await() } }
+        assertThat(answer).isEqualTo(EventData.WatchAlarmAck(7L, EventData.WatchAlarmAck.State.FAILED))
         collector.cancel()
     }
 

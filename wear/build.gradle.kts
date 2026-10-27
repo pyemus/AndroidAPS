@@ -300,5 +300,6 @@ dependencies {
     // Robolectric lets a few Android-coupled unit tests (Intent/Build) run on the JVM. It is a JUnit4
     // runner, so the vintage engine bridges those tests onto the JUnit Platform alongside the Jupiter tests.
     testImplementation(libs.org.robolectric)
+    testImplementation(libs.kotlinx.coroutines.test)
     testRuntimeOnly(libs.org.junit.vintage.engine)
 }
