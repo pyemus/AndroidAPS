@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.Scene
 import app.aaps.core.ui.CoreUiStrings
+import app.aaps.core.ui.compose.AapsCard
 import app.aaps.core.ui.compose.navigation.color
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.plugins.automation.AutomationStrings
@@ -148,10 +148,7 @@ private fun BasicsSection(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        AapsCard(modifier = Modifier.fillMaxWidth()) {
             ListItem(
                 headlineContent = { Text(stringResource(AutomationStrings.user_action)) },
                 trailingContent = {
@@ -196,10 +193,7 @@ private fun ConditionSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionHeader(stringResource(AutomationStrings.condition).trimEnd(':'))
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        AapsCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (state.hasTrigger) {
                     Text(

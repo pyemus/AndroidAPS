@@ -2,14 +2,11 @@ package app.aaps.plugins.automation
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import app.aaps.core.data.format.NumberFormat
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.pump.defs.PumpType
 import app.aaps.core.interfaces.InterfacesStrings
-import app.aaps.core.interfaces.alerts.ReminderScheduler
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.automation.Automation
 import app.aaps.core.interfaces.automation.AutomationEvent
@@ -42,6 +39,8 @@ import app.aaps.core.keys.StringNonKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.ComposablePluginContent
+import app.aaps.core.ui.compose.StyledArg
+import app.aaps.core.ui.compose.styledString
 import app.aaps.plugins.automation.actions.Action
 import app.aaps.plugins.automation.actions.ActionFactory
 import app.aaps.plugins.automation.compose.AutomationComposeContent
@@ -146,7 +145,6 @@ class AutomationRuntime(
     private val locationServiceController: LocationServiceController,
     private val dateUtil: DateUtil,
     private val activePlugin: ActivePlugin,
-    private val reminderScheduler: ReminderScheduler,
     private val actionFactory: ActionFactory,
     private val triggerFactory: TriggerFactory,
     private val triggerDeps: TriggerDeps,
@@ -600,11 +598,16 @@ class AutomationRuntime(
         val iterator = eventsLock.withLock { automationEvents.toMutableList().iterator() }
         while (iterator.hasNext()) {
             val event = iterator.next()
-            if (event.isEnabled && !event.userAction && event.shouldRun())
-                if (event.systemAction || commonEventsEnabled) {
-                    processEvent(event)
-                    if (event.hasStopProcessing()) break
-                }
+            if (!event.isEnabled || event.userAction) continue
+            if (!event.systemAction && !commonEventsEnabled) continue
+            val ran = event.shouldRun() && runEvent(event)
+            // "Stop processing" stops the rules below for as long as this rule's conditions are true.
+            // It used to stop them after every check of the rule, so the rules below never ran while
+            // the conditions were false, and they did run in the 5 minutes after the rule ran, because
+            // shouldRun() skips the rule then. The 5 minute limit is for the actions, not for the stop.
+            // A rule that ran stops the rest without a second check: its own actions can have changed
+            // its conditions. A rule switched off by runEvent (an action that cannot run) stops nothing.
+            if (event.isEnabled && event.hasStopProcessing() && (ran || conditionsHold(event))) break
         }
 
         /*
@@ -625,8 +628,27 @@ class AutomationRuntime(
     }
 
     override suspend fun processEvent(someEvent: AutomationEvent) {
-        if (!config.APS) return // execution is master-only — guards every UI entry point (wear, quick launch, scenes, run-now)
-        val event = someEvent as AutomationEventObject
+        runEvent(someEvent as AutomationEventObject)
+    }
+
+    /** Runs the actions of [event] when its conditions are true. Returns true when they ran. */
+    /**
+     * The rule's trigger and preconditions, for the "Stop processing" check above. A trigger that
+     * throws counts as "not true", as in [runEvent], so one broken rule cannot end every run for the
+     * rules below it. Only the app log gets the error: this check runs on every tick, the execution
+     * log entry is written once by [runEvent].
+     */
+    private suspend fun conditionsHold(event: AutomationEventObject): Boolean = try {
+        event.canRun() && event.preconditionCanRun()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        aapsLogger.error(LTag.AUTOMATION, "Stop processing check failed: ${event.title}", e)
+        false
+    }
+
+    private suspend fun runEvent(event: AutomationEventObject): Boolean {
+        if (!config.APS) return false // execution is master-only — guards every UI entry point (wear, quick launch, scenes, run-now)
 
         // A rule with an action that cannot run is switched off here, before any of it runs, rather
         // than half-executed. This decision used to live in `areActionsValid()`, which the Compose
@@ -637,12 +659,12 @@ class AutomationRuntime(
         if (!event.areActionsValid()) {
             event.isEnabled = false
             for (action in event.actions.filterNot { it.isValid() }) {
-                executionLog.add(AnnotatedString("Invalid action: ${action.shortDescription()}"))
+                executionLog.add(AnnotatedString(rh.gs(InterfacesStrings.confirmation_line, rh.gs(CoreUiStrings.invalid), action.shortDescription())))
                 aapsLogger.debug(LTag.AUTOMATION, "Invalid action: ${action.shortDescription()}")
             }
             markEdited() // the rule is now disabled - store that and refresh the list
             rxBus.send(EventAutomationUpdateGui())
-            return
+            return false
         }
 
         // A rule that throws must not take the runtime down with it. In 3.4.x such an exception was
@@ -657,7 +679,7 @@ class AutomationRuntime(
         } catch (e: Exception) {
             logFailure(event, null, e)
             event.lastRun = dateUtil.now()
-            return
+            return false
         }
         if (due) {
             val actions = event.actions
@@ -671,36 +693,34 @@ class AutomationRuntime(
                     logFailure(event, action, e)
                     continue
                 }
-                val entry = buildAnnotatedString {
-                    append(dateUtil.timeString(dateUtil.now()))
-                    append(" ")
-                    append(if (result.success) "☺" else "▼")
-                    append(" ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${event.title}:") }
-                    append(" ")
-                    append(action.shortDescription())
-                    append(": ")
-                    append(result.comment)
-                }
+                val entry = rh.styledString(
+                    AutomationStrings.automation_log_entry,
+                    StyledArg(dateUtil.timeString(dateUtil.now())),
+                    StyledArg(if (result.success) "☺" else "▼"),
+                    StyledArg(event.title, SpanStyle(fontWeight = FontWeight.Bold)),
+                    StyledArg(action.shortDescription()),
+                    StyledArg(result.comment)
+                )
                 executionLog.add(entry)
                 aapsLogger.debug(LTag.AUTOMATION, "Executed: ${entry.text}")
                 rxBus.send(EventAutomationUpdateGui())
             }
             event.lastRun = dateUtil.now()
             if (event.autoRemove) remove(event)
+            return true
         }
+        return false
     }
 
     private fun logFailure(event: AutomationEventObject, action: Action?, e: Exception) {
-        val entry = buildAnnotatedString {
-            append(dateUtil.timeString(dateUtil.now()))
-            append(" ▼ ")
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${event.title}:") }
-            append(" ")
-            append(action?.shortDescription() ?: runCatching { event.trigger.friendlyDescription() }.getOrDefault(""))
-            append(": ")
-            append(e.message ?: e::class.simpleName ?: "")
-        }
+        val entry = rh.styledString(
+            AutomationStrings.automation_log_entry,
+            StyledArg(dateUtil.timeString(dateUtil.now())),
+            StyledArg("▼"),
+            StyledArg(event.title, SpanStyle(fontWeight = FontWeight.Bold)),
+            StyledArg(action?.shortDescription() ?: runCatching { event.trigger.friendlyDescription() }.getOrDefault("")),
+            StyledArg(e.message ?: e::class.simpleName ?: "")
+        )
         executionLog.add(entry)
         aapsLogger.error(LTag.AUTOMATION, "Failed: ${entry.text}", e)
         rxBus.send(EventAutomationUpdateGui())
@@ -841,14 +861,6 @@ class AutomationRuntime(
 
         return triggers.toList()
     }
-
-    /**
-     * Generate reminder via [ReminderScheduler]
-     *
-     * @param seconds seconds to the future
-     */
-    override fun scheduleTimeToEatReminder(seconds: Int) =
-        reminderScheduler.scheduleReminder(seconds, rh.gs(AutomationStrings.time_to_eat))
 
     /**
      * Create new Automation event to alarm when is time to eat
