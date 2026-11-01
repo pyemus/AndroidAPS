@@ -145,12 +145,18 @@ internal class DataHandlerWearTest : WearTestBase() {
 
     @Test
     fun `a watch alarm is acknowledged as received and started`() {
-        whenever(watchAlarmController.start(7L, "Low", 90)).thenReturn(true)
+        // No verify(timeout) here: start() is @Synchronized, and verify(timeout) polls from inside the
+        // intercepted call, holding the mock's monitor for the whole wait. The handler's real start()
+        // then blocks at the method entry until the verify gives up ("zero interactions"). The stub
+        // reports the call instead, and a plain verify follows.
+        val started = CompletableDeferred<Unit>()
+        whenever(watchAlarmController.start(7L, "Low", 90)).thenAnswer { started.complete(Unit); true }
         val (acks, collector) = collectAcks()
 
         rxBus.send(EventData.WatchAlarm(7L, "Low", 90))
 
-        verify(watchAlarmController, timeout(HANDLER_TIMEOUT_MS)).start(7L, "Low", 90)
+        assertThat(runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { started.await() } }).isNotNull()
+        verify(watchAlarmController).start(7L, "Low", 90)
         assertThat(acks).containsExactly(EventData.WatchAlarmAck(7L, EventData.WatchAlarmAck.State.RECEIVED))
         collector.cancel()
     }
