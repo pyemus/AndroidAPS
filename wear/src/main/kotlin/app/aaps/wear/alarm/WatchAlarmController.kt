@@ -114,11 +114,14 @@ class WatchAlarmController internal constructor(
         return true
     }
 
-    /** The wearer pressed Dismiss, on the alarm screen or on the notification. */
+    /**
+     * The wearer ended the alarm: the Dismiss button, the notification action, or leaving the
+     * alarm screen with the crown or the back gesture. [reason] only goes to the log.
+     */
     @Synchronized
-    fun dismiss() {
+    fun dismiss(reason: String = "Dismiss button") {
         val alarm = _active.value ?: return
-        aapsLogger.info(LTag.WEAR, "Watch alarm dismiss id=${alarm.id}")
+        aapsLogger.info(LTag.WEAR, "Watch alarm dismiss id=${alarm.id} ($reason)")
         stopRinging()
         _active.value = null
         rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(alarm.id, State.DISMISSED)))

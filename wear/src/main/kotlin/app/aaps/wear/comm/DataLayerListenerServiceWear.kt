@@ -167,7 +167,7 @@ class DataLayerListenerServiceWear : WearableListenerService() {
                 sendMessage(rxPath, data, notifyOnFailure = data != null && EventData.deserialize(data).isUserAction())
             }
             INTENT_CANCEL_NOTIFICATION -> (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(CHANGE_NOTIF_ID)
-            INTENT_DISMISS_WATCH_ALARM -> watchAlarmController.dismiss()
+            INTENT_DISMISS_WATCH_ALARM -> watchAlarmController.dismiss("notification action")
         }
         return START_STICKY
     }

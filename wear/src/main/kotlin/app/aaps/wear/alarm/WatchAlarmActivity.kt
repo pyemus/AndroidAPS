@@ -2,6 +2,7 @@ package app.aaps.wear.alarm
 
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,12 @@ import dev.zacsweers.metro.Inject
  * [WatchAlarmController]). It is only a view on the controller's state: Dismiss goes to the
  * controller, and the screen closes by itself when the alarm ends for any reason, also when the
  * launch arrives late, after a dismiss or a time-out.
+ *
+ * Leaving the screen is a dismiss too. Pressing the crown or swiping the screen away means the
+ * wearer is awake and acting, and the Wear OS clock alarm stops the same way. Without this the
+ * vibration went on in the background with no visible way to stop it (the Dismiss action on the
+ * notification is not something anyone finds half asleep). The screen turning off by itself is not
+ * a user action and does not dismiss, so an untouched alarm still ends in the phone ringing.
  */
 class WatchAlarmActivity : WearMetroActivity() {
 
@@ -49,13 +56,23 @@ class WatchAlarmActivity : WearMetroActivity() {
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onBackPressedDispatcher.addCallback(this) {
+            controller.dismiss("back gesture on the alarm screen")
+            finish()
+        }
         setContent {
             MaterialTheme {
                 val active by controller.active.collectAsState()
                 LaunchedEffect(active) { if (active == null) finish() }
-                AlarmScreen(text = active?.text.orEmpty(), onDismiss = { controller.dismiss() })
+                AlarmScreen(text = active?.text.orEmpty(), onDismiss = { controller.dismiss("Dismiss button") })
             }
         }
+    }
+
+    /** The crown (home) button. Only the wearer causes this; the screen turning off does not. */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        controller.dismiss("crown pressed on the alarm screen")
     }
 }
 
