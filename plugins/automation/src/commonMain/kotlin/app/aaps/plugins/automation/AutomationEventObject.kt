@@ -51,8 +51,15 @@ class AutomationEventObject(private val factory: AutomationEventFactory) : Autom
     val actions: MutableList<Action> = ArrayList()
 
     var minRepeatMinutes: Int = MIN_REPEAT_MINUTES // minimal time between two runs while trigger stays true
+    var holdMinutes: Int = 0 // the conditions must stay true this long before the actions run; 0 = run at once
 
     var lastRun: Long = 0
+
+    /**
+     * When the conditions were first found true in the current run of true checks, 0 while they are
+     * false. Not stored, like [lastRun]: after a restart the hold time starts again.
+     */
+    var trueSince: Long = 0
 
     /**
      * A number that stays the same for as long as this object lives. The Compose list uses it as the
@@ -134,6 +141,7 @@ class AutomationEventObject(private val factory: AutomationEventFactory) : Autom
             put("autoRemove", autoRemove)
             put("userAction", userAction)
             put("minRepeatMinutes", minRepeatMinutes)
+            put("holdMinutes", holdMinutes)
             put("trigger", trigger.toJSON())
             put("actions", buildJsonArray { for (a in actions) add(JsonPrimitive(a.toJSON())) })
         }.toString()
@@ -148,6 +156,7 @@ class AutomationEventObject(private val factory: AutomationEventFactory) : Autom
         autoRemove = d.lenientBoolean("autoRemove", false)
         userAction = d.lenientBoolean("userAction", false)
         minRepeatMinutes = d.lenientInt("minRepeatMinutes", MIN_REPEAT_MINUTES).coerceIn(MIN_REPEAT_MINUTES, MAX_REPEAT_MINUTES)
+        holdMinutes = d.lenientInt("holdMinutes", 0).coerceIn(0, MAX_HOLD_MINUTES)
         // The stored top level is always a connector. Anything else - a type this version does not
         // know, or data that does not parse - is put inside one. The rule still loads, and the
         // unknown part keeps it from firing. No trigger at all stays an empty connector, as before.
@@ -175,10 +184,26 @@ class AutomationEventObject(private val factory: AutomationEventFactory) : Autom
         return lastRun <= dateUtil.now() - T.mins(minRepeatMinutes.coerceAtLeast(MIN_REPEAT_MINUTES).toLong()).msecs()
     }
 
+    /**
+     * Called by each check that found the conditions true. Returns true when they have now been true
+     * for at least [holdMinutes], so the actions may run. With a hold of 0 that is at once.
+     */
+    fun conditionsTrue(): Boolean {
+        val now = dateUtil.now()
+        if (trueSince == 0L) trueSince = now
+        return now - trueSince >= T.mins(holdMinutes.toLong()).msecs()
+    }
+
+    /** Called by each check that found the conditions false. The hold time starts again next time. */
+    fun conditionsFalse() {
+        trueSince = 0
+    }
+
     companion object {
 
         const val MIN_REPEAT_MINUTES = 5
         const val MAX_REPEAT_MINUTES = 24 * 60
+        const val MAX_HOLD_MINUTES = 24 * 60
 
         private val uiKeyCounter = AtomicLong(0)
         private fun nextUiKey(): Long = uiKeyCounter.incrementAndFetch()

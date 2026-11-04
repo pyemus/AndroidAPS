@@ -52,6 +52,9 @@ class AutomationStateHolder(
     // value (empty, or "1" on the way to "15") is not replaced by the clamped number.
     private var minRepeatText: String = ""
 
+    // Raw text of the "conditions must stay true for" field, for the same reason.
+    private var holdText: String = ""
+
     fun start() {
         if (scope != null) return
         // drop(1) skips the seed empty snapshot the plugin emits before loadFromSP runs — the
@@ -110,6 +113,7 @@ class AutomationStateHolder(
 
     private fun snapshotEvent() {
         minRepeatText = workingEvent.minRepeatMinutes.toString()
+        holdText = workingEvent.holdMinutes.toString()
         eventSnapshotJson = workingEvent.toJSON()
         _eventDirty.value = false
     }
@@ -221,6 +225,13 @@ class AutomationStateHolder(
         refreshEditState()
     }
 
+    fun editHoldChanged(text: String) {
+        holdText = text.filter { it.isDigit() }.take(4)
+        workingEvent.holdMinutes = (holdText.toIntOrNull() ?: 0).coerceIn(0, AutomationEventObject.MAX_HOLD_MINUTES)
+        recomputeEventDirty()
+        refreshEditState()
+    }
+
     fun editUserActionChanged(checked: Boolean) {
         workingEvent.userAction = checked
         recomputeEventDirty()
@@ -267,6 +278,8 @@ class AutomationStateHolder(
             title = e.title,
             minRepeatMinutes = minRepeatText,
             minRepeatError = minRepeatText.toIntOrNull()?.let { it in AutomationEventObject.MIN_REPEAT_MINUTES..AutomationEventObject.MAX_REPEAT_MINUTES } != true,
+            holdMinutes = holdText,
+            holdError = holdText.toIntOrNull()?.let { it in 0..AutomationEventObject.MAX_HOLD_MINUTES } != true,
             userAction = e.userAction,
             enabled = e.isEnabled,
             readOnly = e.readOnly,

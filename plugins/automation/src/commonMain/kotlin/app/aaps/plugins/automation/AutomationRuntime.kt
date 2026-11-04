@@ -479,10 +479,11 @@ class AutomationRuntime(
     // skipped, so the events after it still load. [bootstrap] must not write back after such a load (#5214).
     internal fun loadFromSP(): Boolean {
         eventsLock.withLock {
-            // Carry run-timers across the reparse: lastRun isn't serialized, so a naive reload would reset
-            // every event's timer and (on a master that executes) risk re-firing automations right after a
-            // remote push. Preserve it by id for events that still exist; new/changed ids start fresh.
-            val previousLastRun = automationEvents.associate { it.id to it.lastRun }
+            // Carry run-timers across the reparse: lastRun and trueSince aren't serialized, so a naive reload
+            // would reset every event's timers and (on a master that executes) risk re-firing automations
+            // right after a remote push, or start a hold time again. Preserve them by id for events that
+            // still exist; new/changed ids start fresh.
+            val previousTimers = automationEvents.associate { it.id to (it.lastRun to it.trueSince) }
             automationEvents.clear()
             var clean = true
             val data = preferences.get(StringNonKey.AutomationEvents)
@@ -496,7 +497,10 @@ class AutomationRuntime(
                 for (element in array ?: emptyList()) {
                     runCatching {
                         val event = automationEventFactory.fromJSON(element.toString())
-                        previousLastRun[event.id]?.let { event.lastRun = it }
+                        previousTimers[event.id]?.let { (lastRun, trueSince) ->
+                            event.lastRun = lastRun
+                            event.trueSince = trueSince
+                        }
                         automationEvents.add(event)
                     }.onFailure {
                         aapsLogger.error(LTag.AUTOMATION, "Cannot parse stored automation event: $element", it)
@@ -672,44 +676,53 @@ class AutomationRuntime(
         // A trigger that throws counts as "not due" and gets lastRun stamped, so it is not evaluated
         // again on every tick but only after its repeat interval. An action that throws is logged like
         // a failed action, and the next action still runs.
-        val due = try {
+        val conditionsTrue = try {
             event.canRun() && event.preconditionCanRun()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logFailure(event, null, e)
             event.lastRun = dateUtil.now()
+            event.conditionsFalse()
             return false
         }
-        if (due) {
-            val actions = event.actions
-            for (action in actions) {
-                action.title = event.title
-                val result = try {
-                    action.doAction()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logFailure(event, action, e)
-                    continue
-                }
-                val entry = rh.styledString(
-                    AutomationStrings.automation_log_entry,
-                    StyledArg(dateUtil.timeString(dateUtil.now())),
-                    StyledArg(if (result.success) "☺" else "▼"),
-                    StyledArg(event.title, SpanStyle(fontWeight = FontWeight.Bold)),
-                    StyledArg(action.shortDescription()),
-                    StyledArg(result.comment)
-                )
-                executionLog.add(entry)
-                aapsLogger.debug(LTag.AUTOMATION, "Executed: ${entry.text}")
-                rxBus.send(EventAutomationUpdateGui())
-            }
-            event.lastRun = dateUtil.now()
-            if (event.autoRemove) remove(event)
-            return true
+        if (!conditionsTrue) {
+            event.conditionsFalse()
+            return false
         }
-        return false
+        // The hold time: the conditions must have stayed true for the rule's holdMinutes before the
+        // actions run. A check that finds them false starts the time again, so one value on the other
+        // side of a limit is enough to reset it.
+        if (!event.conditionsTrue()) {
+            aapsLogger.debug(LTag.AUTOMATION, "Holding: ${event.title}, conditions true since ${dateUtil.timeString(event.trueSince)}")
+            return false
+        }
+        val actions = event.actions
+        for (action in actions) {
+            action.title = event.title
+            val result = try {
+                action.doAction()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logFailure(event, action, e)
+                continue
+            }
+            val entry = rh.styledString(
+                AutomationStrings.automation_log_entry,
+                StyledArg(dateUtil.timeString(dateUtil.now())),
+                StyledArg(if (result.success) "☺" else "▼"),
+                StyledArg(event.title, SpanStyle(fontWeight = FontWeight.Bold)),
+                StyledArg(action.shortDescription()),
+                StyledArg(result.comment)
+            )
+            executionLog.add(entry)
+            aapsLogger.debug(LTag.AUTOMATION, "Executed: ${entry.text}")
+            rxBus.send(EventAutomationUpdateGui())
+        }
+        event.lastRun = dateUtil.now()
+        if (event.autoRemove) remove(event)
+        return true
     }
 
     private fun logFailure(event: AutomationEventObject, action: Action?, e: Exception) {

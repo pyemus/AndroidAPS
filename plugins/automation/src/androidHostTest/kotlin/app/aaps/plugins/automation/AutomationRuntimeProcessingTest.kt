@@ -1,6 +1,7 @@
 package app.aaps.plugins.automation
 
 import app.aaps.core.data.model.RM
+import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.constraints.Constraint
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
@@ -346,5 +347,56 @@ class AutomationRuntimeProcessingTest : TestBaseWithProfile() {
         runtime.processActions()
 
         assertThat(belowRan).isEqualTo(1)
+    }
+
+    @Test
+    fun `a rule with a hold time runs only after its conditions stayed true that long`() = runTest {
+        val start = dateUtil.now()
+        var ran = 0
+        var low = true
+        addRule("low", switchTrigger { low }, countingAction("notify") { ran++ })
+        val event = runtime.at(0)
+        event.holdMinutes = 10
+
+        runtime.processActions() // the first true check only starts the hold time
+        whenever(dateUtil.now()).thenReturn(start + T.mins(9).msecs())
+        runtime.processActions()
+        assertThat(ran).isEqualTo(0)
+        assertThat(event.lastRun).isEqualTo(0L) // still checked on every tick, not only after the repeat interval
+
+        whenever(dateUtil.now()).thenReturn(start + T.mins(10).msecs())
+        runtime.processActions()
+        assertThat(ran).isEqualTo(1)
+
+        // one false check starts the hold time again
+        low = false
+        whenever(dateUtil.now()).thenReturn(start + T.mins(40).msecs())
+        runtime.processActions()
+        assertThat(event.trueSince).isEqualTo(0L)
+        low = true
+        whenever(dateUtil.now()).thenReturn(start + T.mins(45).msecs())
+        runtime.processActions()
+        whenever(dateUtil.now()).thenReturn(start + T.mins(54).msecs())
+        runtime.processActions()
+        assertThat(ran).isEqualTo(1)
+        whenever(dateUtil.now()).thenReturn(start + T.mins(55).msecs())
+        runtime.processActions()
+        assertThat(ran).isEqualTo(2)
+    }
+
+    @Test
+    fun `a reload keeps the hold time already counted for a rule that is still there`() = runTest {
+        // A real (empty) connector and no actions: mocks cannot be written to JSON.
+        runtime.add(eventFactory.newEvent().apply {
+            title = "low"
+            trigger = TriggerConnector(triggerDeps)
+            holdMinutes = 10
+            trueSince = 123L
+        })
+        whenever(preferences.get(StringNonKey.AutomationEvents)).thenReturn("[${runtime.at(0).toJSON()}]")
+
+        assertThat(runtime.loadFromSP()).isTrue()
+
+        assertThat(runtime.at(0).trueSince).isEqualTo(123L)
     }
 }

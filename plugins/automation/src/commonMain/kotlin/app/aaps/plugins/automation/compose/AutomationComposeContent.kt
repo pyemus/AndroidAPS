@@ -440,6 +440,7 @@ class AutomationComposeContent(
             tick = actionTick,
             onTitleChange = holder::editTitleChanged,
             onMinRepeatChange = holder::editMinRepeatChanged,
+            onHoldChange = holder::editHoldChanged,
             onUserActionChange = holder::editUserActionChanged,
             onEnabledChange = holder::editEnabledChanged,
             onEditTrigger = { holder.openTriggerEditor() },

@@ -60,6 +60,7 @@ fun AutomationEditScreen(
     tick: Int,
     onTitleChange: (String) -> Unit,
     onMinRepeatChange: (String) -> Unit,
+    onHoldChange: (String) -> Unit,
     onUserActionChange: (Boolean) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     onEditTrigger: () -> Unit,
@@ -81,7 +82,7 @@ fun AutomationEditScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             if (state.readOnly) ReadOnlyChip()
-            BasicsSection(state, onTitleChange, onMinRepeatChange, onUserActionChange, onEnabledChange)
+            BasicsSection(state, onTitleChange, onMinRepeatChange, onHoldChange, onUserActionChange, onEnabledChange)
             ConditionSection(state, onEditTrigger)
             ActionsSection(
                 state = state,
@@ -119,6 +120,7 @@ private fun BasicsSection(
     state: AutomationEditUiState,
     onTitleChange: (String) -> Unit,
     onMinRepeatChange: (String) -> Unit,
+    onHoldChange: (String) -> Unit,
     onUserActionChange: (Boolean) -> Unit,
     onEnabledChange: (Boolean) -> Unit
 ) {
@@ -144,6 +146,19 @@ private fun BasicsSection(
             isError = state.minRepeatError,
             supportingText = if (state.minRepeatError) {
                 { Text(stringResource(AutomationStrings.automation_min_repeat_minutes_range)) }
+            } else null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = state.holdMinutes,
+            onValueChange = onHoldChange,
+            label = { Text(stringResource(AutomationStrings.automation_hold_minutes)) },
+            singleLine = true,
+            enabled = !state.readOnly,
+            isError = state.holdError,
+            supportingText = if (state.holdError) {
+                { Text(stringResource(AutomationStrings.automation_hold_minutes_range)) }
             } else null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()

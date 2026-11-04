@@ -28,6 +28,8 @@ data class AutomationEditUiState(
     val title: String = "",
     val minRepeatMinutes: String = "",
     val minRepeatError: Boolean = false,
+    val holdMinutes: String = "",
+    val holdError: Boolean = false,
     val userAction: Boolean = false,
     val enabled: Boolean = true,
     val readOnly: Boolean = false,

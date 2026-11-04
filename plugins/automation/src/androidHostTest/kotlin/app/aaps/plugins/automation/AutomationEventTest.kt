@@ -189,6 +189,44 @@ class AutomationEventTest : TestBase() {
         assertThat(eventFactory.fromJSON(legacy).minRepeatMinutes).isEqualTo(5)
     }
 
+    @Test fun holdMinutesJson() {
+        val event = eventFactory.newEvent()
+        event.title = "Test"
+        event.holdMinutes = 30
+        assertThat(eventFactory.fromJSON(event.toJSON()).holdMinutes).isEqualTo(30)
+
+        // events stored before this field existed run as soon as their conditions are true
+        val legacy = JsonObject(event.toJSON().asJsonObject() - "holdMinutes").toString()
+        assertThat(eventFactory.fromJSON(legacy).holdMinutes).isEqualTo(0)
+    }
+
+    @Test fun holdMinutesWaitsUntilTheConditionsStayedTrue() {
+        val start = 100_000_000L
+        whenever(dateUtil.now()).thenReturn(start)
+        val event = eventFactory.newEvent()
+        event.holdMinutes = 20
+
+        // the first true check starts the hold time
+        assertThat(event.conditionsTrue()).isFalse()
+        assertThat(event.trueSince).isEqualTo(start)
+        whenever(dateUtil.now()).thenReturn(start + T.mins(19).msecs())
+        assertThat(event.conditionsTrue()).isFalse()
+        whenever(dateUtil.now()).thenReturn(start + T.mins(20).msecs())
+        assertThat(event.conditionsTrue()).isTrue()
+
+        // a false check starts the hold time again
+        event.conditionsFalse()
+        assertThat(event.trueSince).isEqualTo(0L)
+        whenever(dateUtil.now()).thenReturn(start + T.mins(30).msecs())
+        assertThat(event.conditionsTrue()).isFalse()
+        assertThat(event.trueSince).isEqualTo(start + T.mins(30).msecs())
+
+        // without a hold time the actions may run at once
+        event.holdMinutes = 0
+        event.conditionsFalse()
+        assertThat(event.conditionsTrue()).isTrue()
+    }
+
     @Test fun hasStopProcessing() {
         val event = eventFactory.newEvent()
         event.title = "Test"
