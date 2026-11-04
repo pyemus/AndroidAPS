@@ -205,9 +205,18 @@ class WatchAlarmController internal constructor(
         nm.notify(DataLayerListenerServiceWear.WATCH_ALARM_NOTIF_ID, notification)
     }
 
+    /**
+     * NO_USER_ACTION matters: the full-screen intent and the alarm-clock launch bring the alarm
+     * screen to the front again while it is already showing, and Android reports that to the
+     * screen as `onUserLeaveHint`, the same callback a crown press gives. Without the flag the
+     * alarm dismissed itself about a second after it started (seen on 2026-11-04).
+     */
     private fun activityIntent(): Intent =
         Intent(context, WatchAlarmActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_NO_USER_ACTION
+            )
 
     private fun showPendingIntent(): PendingIntent =
         PendingIntent.getActivity(context, REQUEST_SHOW, activityIntent(), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
