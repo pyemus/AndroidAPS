@@ -1,6 +1,7 @@
 package app.aaps.implementation.notifications
 
 import android.app.NotificationManager as AndroidNotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
@@ -22,6 +23,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -87,9 +89,31 @@ class AndroidSystemNotificationPlatformTest {
         sut.show(notification(NotificationLevel.URGENT, sound = AlarmSound.URGENT_ALARM), "Urgent")
 
         verify(alarmNotificationManager).postSilentAlarmNotification(
-            notificationKey = eq(42), title = eq("Urgent"), body = eq("text"), urgent = eq(true)
+            notificationKey = eq(42), title = eq("Urgent"), body = eq("text"), urgent = eq(true), deleteIntent = any()
         )
         verify(preferences, never()).get(any<BooleanKey>())
+    }
+
+    /**
+     * The alarm notification had no delete intent: a swipe took it out of the tray, but the sound went on and the
+     * alarm stayed in the app. This takes the delete intent the alarm notification is really given and sends it,
+     * as Android does on a swipe.
+     */
+    @Test
+    fun `swiping an audible alarm away is reported with its instance key`() {
+        var dismissed: Int? = null
+        sut.onDismissed { dismissed = it }
+        sut.show(notification(NotificationLevel.URGENT, sound = AlarmSound.URGENT_ALARM), "Urgent")
+
+        val swipe = argumentCaptor<PendingIntent>()
+        verify(alarmNotificationManager).postSilentAlarmNotification(
+            notificationKey = eq(42), title = any(), body = any(), urgent = any(), deleteIntent = swipe.capture()
+        )
+        assertThat(shadowOf(swipe.firstValue).isBroadcast).isTrue()
+        context.sendBroadcast(shadowOf(swipe.firstValue).savedIntent)
+        ShadowLooper.idleMainLooper()
+
+        assertThat(dismissed).isEqualTo(42)
     }
 
     @Test
@@ -98,7 +122,7 @@ class AndroidSystemNotificationPlatformTest {
 
         sut.show(notification(NotificationLevel.NORMAL), "Info")
 
-        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any())
+        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any(), any())
     }
 
     @Test
@@ -108,7 +132,7 @@ class AndroidSystemNotificationPlatformTest {
 
         sut.show(notification(NotificationLevel.NORMAL, actions = listOf(mock())), "Info")
 
-        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any())
+        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any(), any())
     }
 
     @Test
@@ -119,7 +143,7 @@ class AndroidSystemNotificationPlatformTest {
 
         sut.show(notification(NotificationLevel.URGENT), "Urgent")
 
-        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any())
+        verify(alarmNotificationManager, never()).postSilentAlarmNotification(any(), any(), any(), any(), any())
     }
 
     @Test

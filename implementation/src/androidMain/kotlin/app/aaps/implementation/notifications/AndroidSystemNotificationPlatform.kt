@@ -88,7 +88,9 @@ class AndroidSystemNotificationPlatform(
                 notificationKey = notification.instanceKey,
                 title = title,
                 body = notification.text,
-                urgent = true
+                urgent = true,
+                // A swipe dismisses the alarm in the registry, which stops its sound, as Dismiss in the app does.
+                deleteIntent = deleteIntent(notification.instanceKey)
             )
         } else if (preferences.get(BooleanKey.AlertUrgentAsAndroidNotification) && notification.actions.isEmpty()) {
             raiseSystemNotification(notification, title)

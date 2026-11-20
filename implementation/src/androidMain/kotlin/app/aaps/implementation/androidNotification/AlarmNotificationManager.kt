@@ -45,7 +45,7 @@ import dev.zacsweers.metro.SingleIn
  *    through two `setAlarmClock` alarms (`scheduleScreenWakeAndLaunch`); without that permission only the
  *    screen stays dark. When the activity does launch it takes over the looping/ramped audio.
  *  - [postSilentAlarmNotification]: posts on a silent channel (heads-up and vibration). The sound comes
- *    from [AlarmSoundPlayer], which the caller starts.
+ *    from [AlarmSoundPlayer], which the caller starts. A swipe dismisses the alarm.
  * Channels are created on the first post rather than at construction - see the `channels` field. Both
  * posting methods touch it before building anything, so a post can still never race their creation.
  */
@@ -150,9 +150,10 @@ class AlarmNotificationManager(
      * outer lock). Without pairing the notify/add (and remove/cancel) in one critical section
      * a global cancel can iterate-and-clear in between, leaving the just-posted system
      * notification orphaned.
-     * Note on OS-driven dismissal: notifications are `setOngoing(true)` so the user can't
-     * swipe to dismiss, but the OS may still trim notifications under memory pressure. In
-     * that rare case `activeSoundKeys` will hold stale entries until the next `cancelAlarm()`
+     * Note on dismissal outside the app: a swipe by the user comes back through the delete intent
+     * of [postSilentAlarmNotification] and ends in [cancelSoundAlarm], so the key is removed. The
+     * OS may also trim notifications under memory pressure, without a delete intent. In that
+     * rare case `activeSoundKeys` will hold stale entries until the next `cancelAlarm()`
      * (which is harmless — `mgr.cancel(id)` for a no-longer-active id is a no-op).
      */
     private val activeSoundKeys: MutableSet<Int> = mutableSetOf()
@@ -443,14 +444,22 @@ class AlarmNotificationManager(
      * (heads-up + vibration, no channel sound). The audio is owned by [AlarmSoundPlayer]; this
      * notification provides shade/lock-screen visibility and a tap target to open the app.
      * Tracked in [activeSoundKeys], so [cancelSoundAlarm] / [cancelAlarm] clear it.
+     *
+     * The user can swipe it away, also on the lock screen: it is not ongoing, and [deleteIntent] tells
+     * the registry, which dismisses the alarm and stops its sound, as Dismiss in the app does. Before,
+     * the only way to stop the sound was to open AAPS. "Clear all" in the shade does the same as a swipe.
+     * It is local only, because the watch shows this alarm itself and a copy from Wear OS would be a
+     * second one.
      * @param notificationKey unique-per-AAPS-notification identifier (the `AapsNotification.instanceKey`)
      * @param urgent          true for URGENT-level alerts (stronger vibration)
+     * @param deleteIntent    sent by Android when the user swipes the notification away
      */
     fun postSilentAlarmNotification(
         notificationKey: Int,
         title: String,
         body: String,
-        urgent: Boolean
+        urgent: Boolean,
+        deleteIntent: PendingIntent
     ) {
         channels // created on first post, see the field
         val builder = NotificationCompat.Builder(context, if (urgent) CHANNEL_SILENT_URGENT else CHANNEL_SILENT)
@@ -461,9 +470,10 @@ class AlarmNotificationManager(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setOngoing(true)
+            .setLocalOnly(true)
             .setAutoCancel(false)
             .setContentIntent(notificationHolderProvider().openAppIntent())
+            .setDeleteIntent(deleteIntent)
 
         val systemId = SOUND_ID_OFFSET + notificationKey
         try {
