@@ -316,7 +316,8 @@ class SceneExecutor(
     /**
      * Called when scene duration expires. Reverts only non-duration actions (SMB toggle)
      * since duration-based actions (TT, Profile, LoopMode) already expired on their own.
-     * Marks the scene as expired so the banner shows "Dismiss" instead of "End Scene".
+     * Marks the scene as expired so the banner shows "Close" instead of "End Scene". `SceneExpiryRunner`
+     * then closes it by itself, unless the banner has to say why a follow-up scene did not start.
      */
     suspend fun onExpiry() {
         val activeState = activeSceneManager.getActiveState()
@@ -357,10 +358,11 @@ class SceneExecutor(
 
     /**
      * Dismiss the expired scene banner. No revert — everything already handled by onExpiry.
+     * Called by `SceneExpiryRunner` right after the end, and by the banner's Close button when the
+     * banner stayed to say why a follow-up scene did not start.
      *
-     * The end itself raises no notification - the banner says it, and that is the one thing to confirm.
-     * Only when the scene actually performed a ProfileSwitch is there a card to clear: the
-     * single-instance "Basal profile in pump updated" one ([NotificationId.PROFILE_SET_OK]) that its
+     * The end itself raises no notification. Only when the scene actually performed a ProfileSwitch is
+     * there a card to clear: the single-instance "Basal profile in pump updated" one ([NotificationId.PROFILE_SET_OK]) that its
      * revert can raise. That card is meant to be silenced (#4959); the scoped dismiss here is a no-op
      * when suppression works and a cleanup when it leaks. Reading the active state before
      * [ActiveSceneManager.clearActive] is required — it is gone afterwards.

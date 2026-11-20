@@ -25,7 +25,10 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * What happens when a timed scene reaches its end: revert what does not expire on its own, mark the
- * scene expired, and then either start the chained follow-up scene or tell the user it ended.
+ * scene expired, and then either start the chained follow-up scene or close the scene.
+ *
+ * An ended scene closes by itself. Its banner stays, with a Close button, only when it has something
+ * to tell: that the follow-up scene did not start, and why.
  *
  * All of that is a rule, not a platform call - the only Android part was being woken up at the right
  * moment, which is [SceneExpiryScheduler]'s job. `SceneExpiryWorker` is now a shell that holds this
@@ -84,13 +87,24 @@ class SceneExpiryRunner(
         val endAction = activeState.scene.endAction
         sceneExecutor.onExpiry()
 
-        // A plain end says everything it has to say on the banner, which stays until the user closes
-        // it, so it gets no notification of its own.
-        if (endAction is SceneEndAction.ChainScene) runChain(sceneName, endAction.sceneId)
+        if (endAction is SceneEndAction.ChainScene) {
+            // No close here, in either outcome. A follow-up that started is the active scene now, and
+            // closing would end it. One that did not start leaves the banner to say why.
+            runChain(sceneName, endAction.sceneId)
+        } else {
+            // A plain end needs no notification and no banner: the scene is over and its end is in
+            // the user entry log. Close it, so the user does not have to.
+            aapsLogger.info(LTag.UI, "Scene '$sceneName' ended, closing it")
+            sceneExecutor.dismiss()
+        }
 
         return WorkOutcome.Success
     }
 
+    /**
+     * Starts the follow-up scene. When it does not start, the reason is kept on the ended scene's
+     * banner, which then stays until the user closes it.
+     */
     private suspend fun runChain(endedName: String, targetId: String) {
         val target = sceneRepository.getScene(targetId)
         if (target == null) {
@@ -119,6 +133,13 @@ class SceneExpiryRunner(
 
         val result = sceneExecutor.activate(target)
 
+        // activate() refused the scene before it ran any action (its own precondition check). The
+        // follow-up did not start, so this is a skip like the ones above, not a partial failure.
+        if (!result.success && result.actionResults.isEmpty()) {
+            keepSkipReason(result.errorMessage ?: rh.gs(CoreUiStrings.scene_some_actions_failed))
+            return
+        }
+
         // A follow-up that started is its own banner now, so nothing has to be said about it.
         if (!result.success) {
             val failed = result.actionResults.filter { !it.success }
@@ -131,8 +152,8 @@ class SceneExpiryRunner(
     }
 
     /**
-     * The follow-up did not start. The reason goes on the expired banner, which the user has to close
-     * anyway - a notification next to it would be the same news twice, and two things to confirm.
+     * The follow-up did not start. The reason goes on the expired banner, which then stays until the
+     * user closes it - a notification next to it would be the same news twice, and two things to confirm.
      */
     private fun keepSkipReason(reason: String) {
         activeSceneManager.setChainSkipReason(reason)

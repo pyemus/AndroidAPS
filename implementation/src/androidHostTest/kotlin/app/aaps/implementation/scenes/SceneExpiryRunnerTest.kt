@@ -1,6 +1,7 @@
 package app.aaps.implementation.scenes
 
 import app.aaps.core.data.model.ActiveSceneState
+import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.Scene
 import app.aaps.core.data.model.SceneEndAction
 import app.aaps.core.interfaces.aps.Loop
@@ -17,6 +18,7 @@ import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doSuspendableAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -58,6 +60,23 @@ class SceneExpiryRunnerTest : TestBaseWithProfile() {
             on { endAction } doReturn action
         }
         return mock { on { this.scene } doReturn scene }
+    }
+
+    private fun chainTarget(enabled: Boolean = true): Scene = mock {
+        on { name } doReturn "Next"
+        on { id } doReturn "target"
+        on { isEnabled } doReturn enabled
+    }
+
+    /** A chain whose target exists and that nothing blocks: loop running, pump ready, profile set. */
+    private suspend fun readyToChain(target: Scene) {
+        // Built before whenever(): making a mock inside a stubbing call leaves that stubbing unfinished.
+        val state = stateWithEndAction(SceneEndAction.ChainScene("target"))
+        whenever(activeSceneManager.getActiveState()).thenReturn(state)
+        whenever(activeSceneManager.isExpired()).thenReturn(false)
+        whenever(sceneRepository.getScene("target")).thenReturn(target)
+        whenever(loop.runningMode()).thenReturn(RM.Mode.CLOSED_LOOP)
+        whenever(profileFunction.getProfile()).thenReturn(effectiveProfile)
     }
 
     @BeforeEach
@@ -115,7 +134,8 @@ class SceneExpiryRunnerTest : TestBaseWithProfile() {
         assertThat(outcome).isEqualTo(WorkOutcome.Success)
         verify(sceneExecutor).onExpiry()
         verify(sceneRepository, never()).getScene(any())
-        // The banner says the scene ended and has to be closed anyway, so there is nothing to post.
+        // Nothing to tell: the scene closes by itself, with no notification.
+        verify(sceneExecutor).dismiss()
         verifyNoInteractions(notificationManager)
     }
 
@@ -134,6 +154,64 @@ class SceneExpiryRunnerTest : TestBaseWithProfile() {
         // The follow-up is gone. That goes on the banner, not into a second thing to confirm.
         verify(activeSceneManager).setChainSkipReason(baseText.gs(CoreUiStrings.scene_chain_skipped_deleted))
         verifyNoInteractions(notificationManager)
+        // The banner is the only place that says it, so it stays until the user closes it.
+        verify(sceneExecutor, never()).dismiss()
+    }
+
+    @Test
+    fun `chain to a disabled target keeps the banner to say why`() = runTest {
+        val target = chainTarget(enabled = false)
+        readyToChain(target)
+
+        runner().run("MyScene")
+
+        verify(activeSceneManager).setChainSkipReason(baseText.gs(CoreUiStrings.scene_chain_skipped_disabled, "Next"))
+        verify(sceneExecutor, never()).activate(any(), any())
+        verify(sceneExecutor, never()).dismiss()
+    }
+
+    @Test
+    fun `chain blocked by a stopped loop keeps the banner to say why`() = runTest {
+        val target = chainTarget()
+        readyToChain(target)
+        whenever(loop.runningMode()).thenReturn(RM.Mode.DISCONNECTED_PUMP)
+
+        runner().run("MyScene")
+
+        verify(activeSceneManager).setChainSkipReason(any())
+        verify(sceneExecutor, never()).activate(any(), any())
+        verify(sceneExecutor, never()).dismiss()
+    }
+
+    /**
+     * The follow-up is the active scene now. Closing here would end the scene that just started,
+     * not the one that ended.
+     */
+    @Test
+    fun `a follow-up that started is not closed`() = runTest {
+        val target = chainTarget()
+        readyToChain(target)
+        whenever(sceneExecutor.activate(eq(target), any())).thenReturn(SceneExecutionResult(success = true))
+
+        runner().run("MyScene")
+
+        verify(sceneExecutor).activate(eq(target), any())
+        verify(sceneExecutor, never()).dismiss()
+        verifyNoInteractions(notificationManager)
+    }
+
+    /** activate() can still refuse the scene itself. Then it did not start, and that is a skip. */
+    @Test
+    fun `a follow-up that activate refused keeps the banner to say why`() = runTest {
+        val target = chainTarget()
+        readyToChain(target)
+        whenever(sceneExecutor.activate(eq(target), any())).thenReturn(SceneExecutionResult(success = false, errorMessage = "refused"))
+
+        runner().run("MyScene")
+
+        verify(activeSceneManager).setChainSkipReason("refused")
+        verify(sceneExecutor, never()).dismiss()
+        verifyNoInteractions(notificationManager)
     }
 
     /**
@@ -149,6 +227,7 @@ class SceneExpiryRunnerTest : TestBaseWithProfile() {
         runner().endIfOverdue()
 
         verify(sceneExecutor).onExpiry()
+        verify(sceneExecutor).dismiss()
     }
 
     @Test
