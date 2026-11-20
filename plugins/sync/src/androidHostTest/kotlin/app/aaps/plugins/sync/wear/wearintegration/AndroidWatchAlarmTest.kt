@@ -149,6 +149,20 @@ class AndroidWatchAlarmTest : TestBaseWithProfile() {
         phoneRangTimes(1)
     }
 
+    @Test fun `a watch that is not worn makes the phone ring at once`() = runTest {
+        val sut = sut()
+        sut.raise("Low", 90)
+        runCurrent()
+
+        ack(dateUtil.now(), State.RECEIVED)
+        ack(dateUtil.now(), State.NOT_WORN)
+        phoneRangTimes(1)
+
+        advanceTimeBy(10.minutes)
+        runCurrent()
+        phoneRangTimes(1)
+    }
+
     @Test fun `an ack for another alarm is ignored`() = runTest {
         val sut = sut()
         sut.raise("Low", 90)

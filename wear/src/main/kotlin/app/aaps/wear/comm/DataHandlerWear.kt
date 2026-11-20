@@ -29,6 +29,7 @@ import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.wear.R
 import app.aaps.wear.alarm.WatchAlarmController
+import app.aaps.wear.alarm.WristDetector
 import app.aaps.wear.complications.BgGraphComplication
 import app.aaps.wear.complications.BgRangedComplication
 import app.aaps.wear.complications.BrCobIobComplication
@@ -99,7 +100,8 @@ class DataHandlerWear(
     private val watchFacePushHelper: WatchFacePushHelper,
     private val eatReminderWatch: EatReminderWatch,
     private val phoneAlarmWatch: PhoneAlarmWatch,
-    private val watchAlarmController: WatchAlarmController
+    private val watchAlarmController: WatchAlarmController,
+    private val wristDetector: WristDetector
 ) {
 
     // Coroutine scope for DataStore operations
@@ -132,6 +134,29 @@ class DataHandlerWear(
                 aapsLogger.debug(LTag.WEAR, "${T::class.java.simpleName} received from ${event.sourceNodeId}${detail(event)}")
                 handler(event)
             }
+    }
+
+    /**
+     * A watch that is not on the wrist wakes nobody, so the phone is told NOT_WORN and rings at once.
+     * When the wrist check has no answer (no sensor, no reply), the watch rings as before; the phone
+     * still rings if nobody dismisses it.
+     */
+    private suspend fun startWatchAlarm(command: EventData.WatchAlarm) {
+        val worn = runCatching { wristDetector.isWorn() }
+            .onFailure { aapsLogger.error(LTag.WEAR, "Watch alarm ${command.id}: wrist check failed", it) }
+            .getOrNull()
+        if (worn == false) {
+            aapsLogger.info(LTag.WEAR, "Watch alarm ${command.id}: watch is not worn - the phone rings instead")
+            rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.NOT_WORN)))
+            return
+        }
+        val started = try {
+            watchAlarmController.start(command.id, command.text, command.durationSeconds)
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.WEAR, "Watch alarm ${command.id} could not start", e)
+            false
+        }
+        if (!started) rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.FAILED)))
     }
 
     private fun setupBus() {
@@ -191,13 +216,8 @@ class DataHandlerWear(
             // RECEIVED first: it only says the message arrived. Whether the alarm could start is a
             // separate answer, so the phone can tell "watch unreachable" from "watch cannot ring".
             rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.RECEIVED)))
-            val started = try {
-                watchAlarmController.start(command.id, command.text, command.durationSeconds)
-            } catch (e: Exception) {
-                aapsLogger.error(LTag.WEAR, "Watch alarm ${command.id} could not start", e)
-                false
-            }
-            if (!started) rxBus.send(EventWearToMobile(EventData.WatchAlarmAck(command.id, EventData.WatchAlarmAck.State.FAILED)))
+            // Launched, because the wrist check waits for a sensor and must not hold up other events.
+            dataStoreScope.launch { startWatchAlarm(command) }
         }
         onEvent<EventData.OpenSettings> {
             // The Display screen holds the settings of the code-based faces. With the complications

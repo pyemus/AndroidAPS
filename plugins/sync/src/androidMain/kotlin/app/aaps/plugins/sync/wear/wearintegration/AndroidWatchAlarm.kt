@@ -40,7 +40,7 @@ import kotlin.time.Duration.Companion.seconds
  *  - the alarm duration plus [DISMISS_GRACE] after the receipt: the wearer must have dismissed it,
  *    or the phone rings. It counts from the receipt because the watch counts its duration from its
  *    own start, and the receipt can arrive late.
- * TIMED_OUT and FAILED from the watch ring the phone at once. A DISMISSED that arrives after the
+ * TIMED_OUT, FAILED and NOT_WORN from the watch ring the phone at once. A DISMISSED that arrives after the
  * phone started ringing stops the phone again, because the wearer is awake. Acks for an alarm that
  * already ended on the watch are ignored, so a late TIMED_OUT cannot wake a wearer who dismissed.
  *
@@ -167,6 +167,11 @@ class AndroidWatchAlarm(
                 State.FAILED    -> {
                     finish(alarm)
                     ring(alarm, "the watch could not start it")
+                }
+
+                State.NOT_WORN  -> {
+                    finish(alarm)
+                    ring(alarm, "the watch is not worn")
                 }
             }
         }

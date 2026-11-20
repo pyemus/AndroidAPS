@@ -680,12 +680,13 @@ sealed class EventData : Event() {
      * RECEIVED is sent as soon as the message arrives, before the alarm starts. DISMISSED means the
      * wearer pressed the button. TIMED_OUT means the alarm ran for its full time without a press.
      * FAILED means the watch could not start the alarm at all, so the phone should ring instead.
+     * NOT_WORN means the watch is not on the wrist, so it did not ring and the phone should ring instead.
      */
     @Serializable
     data class WatchAlarmAck(val id: Long, val state: State) : EventData() {
 
         @Serializable
-        enum class State { RECEIVED, DISMISSED, TIMED_OUT, FAILED }
+        enum class State { RECEIVED, DISMISSED, TIMED_OUT, FAILED, NOT_WORN }
     }
 
     // Wear -> Wear (workaround)

@@ -13,6 +13,7 @@ import app.aaps.wear.AAPSLoggerTest
 import app.aaps.wear.R
 import app.aaps.wear.WearTestBase
 import app.aaps.wear.alarm.WatchAlarmController
+import app.aaps.wear.alarm.WristDetector
 import app.aaps.wear.data.ComplicationDataRepository
 import app.aaps.wear.alarm.PhoneAlarmWatch
 import app.aaps.wear.eatreminder.EatReminderWatch
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.Mockito.timeout
+import org.mockito.kotlin.any
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyBlocking
@@ -50,6 +52,7 @@ internal class DataHandlerWearTest : WearTestBase() {
     @Mock lateinit var eatReminderWatch: EatReminderWatch
     @Mock lateinit var phoneAlarmWatch: PhoneAlarmWatch
     @Mock lateinit var watchAlarmController: WatchAlarmController
+    @Mock lateinit var wristDetector: WristDetector
 
     private val logger = AAPSLoggerTest()
     private lateinit var rxBus: RxBus
@@ -58,7 +61,7 @@ internal class DataHandlerWearTest : WearTestBase() {
     @BeforeEach
     fun setupHandler() {
         rxBus = RxBusImpl(logger)
-        sut = DataHandlerWear(context, rxBus, sp, preferences, logger, complicationDataRepository, watchFacePushHelper, eatReminderWatch, phoneAlarmWatch, watchAlarmController)
+        sut = DataHandlerWear(context, rxBus, sp, preferences, logger, complicationDataRepository, watchFacePushHelper, eatReminderWatch, phoneAlarmWatch, watchAlarmController, wristDetector)
     }
 
     @Test
@@ -176,6 +179,35 @@ internal class DataHandlerWearTest : WearTestBase() {
         val answer = runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { failed.await() } }
         assertThat(answer).isEqualTo(EventData.WatchAlarmAck(7L, EventData.WatchAlarmAck.State.FAILED))
         collector.cancel()
+    }
+
+    @Test
+    fun `a watch that is not worn does not ring and tells the phone`() {
+        runBlocking { whenever(wristDetector.isWorn()).thenReturn(false) }
+        val notWorn = CompletableDeferred<EventData.WatchAlarmAck>()
+        val collector = CoroutineScope(Dispatchers.Unconfined).launch(start = CoroutineStart.UNDISPATCHED) {
+            rxBus.toFlow(EventWearToMobile::class).collect { evt ->
+                (evt.payload as? EventData.WatchAlarmAck)?.takeIf { it.state == EventData.WatchAlarmAck.State.NOT_WORN }?.let { notWorn.complete(it) }
+            }
+        }
+
+        rxBus.send(EventData.WatchAlarm(7L, "Low", 90))
+
+        val answer = runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { notWorn.await() } }
+        assertThat(answer).isEqualTo(EventData.WatchAlarmAck(7L, EventData.WatchAlarmAck.State.NOT_WORN))
+        verify(watchAlarmController, never()).start(any(), any(), any())
+        collector.cancel()
+    }
+
+    @Test
+    fun `a watch that cannot tell if it is worn rings as before`() {
+        runBlocking { whenever(wristDetector.isWorn()).thenReturn(null) }
+        val started = CompletableDeferred<Unit>()
+        whenever(watchAlarmController.start(7L, "Low", 90)).thenAnswer { started.complete(Unit); true }
+
+        rxBus.send(EventData.WatchAlarm(7L, "Low", 90))
+
+        assertThat(runBlocking { withTimeoutOrNull(HANDLER_TIMEOUT_MS) { started.await() } }).isNotNull()
     }
 
     companion object {
